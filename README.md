@@ -214,11 +214,9 @@ texture sets) are public domain.
 5. ✅ **Vistas gallery + closing + custom cursor + magnetic buttons + type reveals**
 6. ✅ **Performance pass, mobile, reduced-motion, full fallbacks** ← complete
 
-All six milestones are in. Possible future polish (not in the brief's build
-order): the optional black-hole "Singularity" showpiece; smoothing the rare
-solar-act moment where the camera frames the sun while interpolating its
-look-target between two planets on opposite sides of it; and swapping the
-procedural vistas for real NASA/ESO photography (see above).
+All six milestones are in. The solar-act camera slerp fix (look-target arcs
+around the sun rather than cutting through it) is also shipped. Possible
+future polish: the optional black-hole "Singularity" showpiece.
 
 ---
 
