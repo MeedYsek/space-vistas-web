@@ -205,18 +205,7 @@ texture sets) are public domain.
 
 ---
 
-## Roadmap
-
-1. ✅ **Scaffold + smooth scroll + persistent canvas + starfield + post-processing**
-2. ✅ **Hero polish + animated preloader + scroll-driven camera rig**
-3. ✅ **Solar system orrery with shader planets (sun, terminators, atmospheres, rings)**
-4. ✅ **Galaxy particle centerpiece (120k particles, differential spin, camera arc)**
-5. ✅ **Vistas gallery + closing + custom cursor + magnetic buttons + type reveals**
-6. ✅ **Performance pass, mobile, reduced-motion, full fallbacks** ← complete
-
-All six milestones are in. The solar-act camera slerp fix (look-target arcs
-around the sun rather than cutting through it) is also shipped. Possible
-future polish: the optional black-hole "Singularity" showpiece.
+Possible future polish: the optional black-hole "Singularity" showpiece.
 
 ---
 
