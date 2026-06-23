@@ -105,12 +105,15 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
     // Fade the whole gallery out as the return act begins so the journey can
     // collapse to a clean point of light.
     const fade = 1 - smoothstep(flight.scroll, ACTS.vistasEnd, ACTS.outerStart + 0.04)
+    // Gate reveals to the vistas act only — the galaxy camera arc sweeps through
+    // x values that overlap with plate positions, which would ghost-reveal plates early.
+    const vistaGate = smoothstep(flight.scroll, ACTS.vistasStart - 0.02, ACTS.vistasStart + 0.02)
     let nearest = -1
     let nearestCloseness = 0
 
     planes.forEach((p, i) => {
       const dx = Math.abs(camX - p.x)
-      const closeness = 1 - smoothstep(VISTAS.revealBand[1], VISTAS.revealBand[0], dx)
+      const closeness = (1 - smoothstep(VISTAS.revealBand[1], VISTAS.revealBand[0], dx)) * vistaGate
       reveals.current[i] = Math.max(reveals.current[i], closeness) // latch
       const m = matRefs.current[i]
       if (m) {
