@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { VISTAS, ACTS } from '../../config/scene'
@@ -25,6 +25,9 @@ interface PlaneData {
     uColorB: { value: THREE.Color }
     uColorC: { value: THREE.Color }
     uAspect: { value: number }
+    uTex: { value: THREE.Texture }
+    uUseTexture: { value: number }
+    uImgAspect: { value: number }
   }
 }
 
@@ -41,6 +44,12 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
   const reveals = useRef<number[]>(VISTAS_CONTENT.map(() => 0))
   const backdropRef = useRef<THREE.ShaderMaterial>(null)
   const tint = useRef(new THREE.Color('#0a0a1a'))
+
+  const blankTex = useMemo(() => {
+    const t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat)
+    t.needsUpdate = true
+    return t
+  }, [])
 
   const planes = useMemo<PlaneData[]>(() => {
     const n = VISTAS_CONTENT.length
@@ -63,10 +72,28 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
           uColorB: { value: new THREE.Color(v.colors[1]) },
           uColorC: { value: new THREE.Color(v.colors[2]) },
           uAspect: { value: VISTAS.planeW / VISTAS.planeH },
+          uTex: { value: blankTex },
+          uUseTexture: { value: 0 },
+          uImgAspect: { value: VISTAS.planeW / VISTAS.planeH },
         },
       }
     })
-  }, [lowPower])
+  }, [lowPower, blankTex])
+
+  // Load real photos for vistas that have a src; swap in after load.
+  useEffect(() => {
+    const loader = new THREE.TextureLoader()
+    VISTAS_CONTENT.forEach((v, i) => {
+      if (!v.src) return
+      loader.load(`/textures/${v.src}`, (tex) => {
+        const m = matRefs.current[i]
+        if (!m) return
+        m.uniforms.uTex.value = tex
+        m.uniforms.uUseTexture.value = 1
+        m.uniforms.uImgAspect.value = tex.image.width / tex.image.height
+      })
+    })
+  }, [])
 
   const backdropUniforms = useMemo(
     () => ({ uColor: { value: new THREE.Color('#0a0a1a') }, uIntensity: { value: 0.22 } }),

@@ -35,6 +35,9 @@ export const vistaFragment = /* glsl */ `
   uniform vec3 uColorB; // mid
   uniform vec3 uColorC; // glow / highlight
   uniform float uAspect;
+  uniform sampler2D uTex;
+  uniform int uUseTexture;
+  uniform float uImgAspect; // real image aspect ratio for cover-fit UV
 
   ${noiseGLSL}
 
@@ -113,7 +116,19 @@ export const vistaFragment = /* glsl */ `
       fbm(vec3(vUv * 3.0, uSeed), 3),
       fbm(vec3(vUv * 3.0 + 11.0, uSeed), 3)
     ) * defocus * 0.12;
-    vec3 img = vistaImage(vUv + d);
+    vec3 img;
+    if (uUseTexture == 1) {
+      // Cover-fit: scale UV so the image fills the plane without distortion.
+      vec2 texUv = vUv + d;
+      if (uImgAspect > uAspect) {
+        texUv.x = (texUv.x - 0.5) * (uAspect / uImgAspect) + 0.5;
+      } else {
+        texUv.y = (texUv.y - 0.5) * (uImgAspect / uAspect) + 0.5;
+      }
+      img = texture2D(uTex, clamp(texUv, 0.001, 0.999)).rgb;
+    } else {
+      img = vistaImage(vUv + d);
+    }
 
     // Per-pixel noise threshold gates the wipe; the front edge glows.
     float thr = fbm(vec3(vUv * 3.5, uSeed * 1.7), uOctaves) * 0.5 + 0.5;

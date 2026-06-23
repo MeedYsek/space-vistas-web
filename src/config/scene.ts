@@ -57,7 +57,7 @@ export const NEBULA = {
   /** Drift speed of the noise field. */
   speed: 0.012,
   /** Overall opacity ceiling of the clouds. */
-  intensity: 0.5,
+  intensity: 0.32,
 }
 
 /* ── Parallax dust (depth layers between camera and far stars) ─────────────── */
@@ -249,21 +249,21 @@ export const PRELOADER = {
 /* ── Post-processing ───────────────────────────────────────────────────────── */
 export const POSTFX = {
   bloom: {
-    intensity: 1.15,
-    luminanceThreshold: 0.18,
-    luminanceSmoothing: 0.9,
+    intensity: 0.72,
+    luminanceThreshold: 0.38,
+    luminanceSmoothing: 0.75,
     mipmapBlur: true,
     radius: 0.7,
   },
   chromaticAberration: {
-    offset: 0.0012, // subtle; pushes toward the frame edges
+    offset: 0.0012,
   },
   vignette: {
-    offset: 0.18,
-    darkness: 0.95,
+    offset: 0.22,
+    darkness: 1.0,
   },
   filmGrain: {
-    opacity: 0.06, // cinematic, not noisy
+    opacity: 0.06,
   },
 }
 
