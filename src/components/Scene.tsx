@@ -50,7 +50,7 @@ export default function Scene({ profile, reducedMotion, ignited }: SceneProps) {
         <>
           <SolarSystem showOrbits={!light} />
           <Galaxy count={galaxyCount} />
-          <Singularity />
+          <Singularity lowPower={light} />
           <Vistas lowPower={light} />
         </>
       )}

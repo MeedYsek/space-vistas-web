@@ -1,67 +1,28 @@
 import { noiseGLSL } from './noise.glsl'
 
-// ── Accretion Disk ──────────────────────────────────────────────────────────
-// RingGeometry lies in the XY plane in object space; the mesh is rotated in
-// world space but the shader samples in object space so the disk sticks to
-// the geometry regardless of tilt.
+// ─────────────────────────────────────────────────────────────────────────────
+//  Gravitationally-lensed black hole (the "Gargantua" look)
+// ─────────────────────────────────────────────────────────────────────────────
+//  Rendered on a single camera-facing billboard. Instead of faking the disk with
+//  flat geometry, the fragment shader integrates photon paths through the curved
+//  space around the hole, so the accretion disk genuinely bends up and over the
+//  shadow, a thin photon ring forms at the silhouette, and the disk shows
+//  relativistic Doppler beaming — all from one pass.
+//
+//  Maths (geometric units, event horizon r = 1, so 2M = 1):
+//    - Photon geodesic in the weak-field/Schwarzschild approximation:
+//        d²r/dλ² = −1.5 · h² · r / |r|⁵   with h = r × v conserved.
+//      This naturally captures rays with impact parameter below the critical
+//      value (the shadow) and bends grazing rays around the photon sphere
+//      at r = 1.5 (the photon ring at apparent radius 3√3·M ≈ 2.6).
+//    - The disk lives in the equatorial (world XZ) plane; every time the marched
+//      ray crosses y = 0 inside [inner, outer] we composite its emission, so a
+//      single screen ray can pick up the near face AND the lensed far face.
+//
+//  All positions are normalised by the horizon radius (uRs) on entry, so the
+//  same constants work at any world scale.
 
-export const diskVertex = /* glsl */ `
-  varying vec3 vObjPos;
-  void main() {
-    vObjPos = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-export const diskFragment = /* glsl */ `
-  precision highp float;
-  varying vec3 vObjPos;
-  uniform float uTime;
-  uniform float uInnerR;
-  uniform float uOuterR;
-
-  ${noiseGLSL}
-
-  void main() {
-    float r = length(vObjPos.xy);
-    float t = (r - uInnerR) / (uOuterR - uInnerR);
-    if (t < 0.0 || t > 1.0) discard;
-
-    // Soft inner/outer fade
-    float edgeFade = smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.82, t);
-
-    // Temperature gradient: hot white-orange core → orange mid → deep magenta rim
-    vec3 colInner = vec3(1.0, 0.92, 0.72);
-    vec3 colMid   = vec3(1.0, 0.38, 0.10);
-    vec3 colOuter = vec3(0.42, 0.04, 0.26);
-    vec3 col = t < 0.35
-      ? mix(colInner, colMid, t / 0.35)
-      : mix(colMid, colOuter, (t - 0.35) / 0.65);
-
-    // Brightness: inner disk is much hotter
-    float brightness = pow(1.0 - t, 1.8) * 3.5 + 0.06;
-
-    // Relativistic beaming: approaching side (phi ~ π/2) is brighter
-    float phi = atan(vObjPos.y, vObjPos.x);
-    float doppler = 0.5 + 0.5 * sin(phi - 0.8);
-    brightness *= (0.35 + 0.65 * doppler * doppler);
-
-    // FBM turbulence for substructure
-    vec3 sp = normalize(vObjPos) * 4.5 + vec3(uTime * 0.03, 0.0, uTime * 0.015);
-    float turb = fbm(sp, 4) * 0.5 + 0.5;
-    brightness *= (0.55 + 0.45 * turb);
-
-    float a = edgeFade * min(brightness, 1.8) * 0.95;
-    gl_FragColor = vec4(col * brightness, a);
-  }
-`
-
-// ── Gravitational Lensing Dome ──────────────────────────────────────────────
-// A large BackSide sphere. The fragment shader bends background-star sampling
-// directions toward the black hole, compressing the background near the shadow
-// and creating a faint Einstein arc at the photon-sphere angle.
-
-export const lensingVertex = /* glsl */ `
+export const blackholeVertex = /* glsl */ `
   varying vec3 vWorldPos;
   void main() {
     vec4 wp = modelMatrix * vec4(position, 1.0);
@@ -70,79 +31,154 @@ export const lensingVertex = /* glsl */ `
   }
 `
 
-export const lensingFragment = /* glsl */ `
+/**
+ * STEPS is the photon-integration budget — the dominant cost. Injected as a
+ * compile-time constant so the GLSL1 loop bound stays static (desktop ~ 200,
+ * low-power ~ 96).
+ */
+export const makeBlackholeFragment = (steps: number) => /* glsl */ `
   precision highp float;
+  #define STEPS ${steps}
+
   varying vec3 vWorldPos;
-  uniform vec3 uCenter;
+
   uniform float uTime;
+  uniform vec3  uCenter;     // black-hole world position
+  uniform float uRs;         // event-horizon radius (world units → scale factor)
+  uniform float uDiskInner;  // disk inner edge (in horizon radii)
+  uniform float uDiskOuter;  // disk outer edge (in horizon radii)
+  uniform vec3  uColInner;   // hot inner temperature colour
+  uniform vec3  uColMid;     // mid (amber) colour
+  uniform vec3  uColOuter;   // cool outer (magenta) colour
+  uniform float uBrightness; // master disk brightness
 
   ${noiseGLSL}
 
-  void main() {
-    vec3 fragDir  = normalize(vWorldPos - cameraPosition);
-    vec3 toCenter = normalize(uCenter - cameraPosition);
-
-    float cosTheta = clamp(dot(fragDir, toCenter), -1.0, 1.0);
-    float theta    = acos(cosTheta);
-    float sinTheta = max(sin(theta), 0.001);
-
-    // Simplified Schwarzschild lensing: compress background near the shadow
-    float lensK   = 0.045;
-    float bentTh  = theta * max(0.01, 1.0 - lensK / (theta * theta + 0.003));
-
-    // Reconstruct bent direction
-    vec3 tangent  = normalize(fragDir - cosTheta * toCenter);
-    vec3 lensedDir = cos(bentTh) * toCenter + sin(bentTh) * tangent;
-
-    // Procedural stars at the lensed background position
-    vec3 sp = lensedDir + uTime * 0.002;
-    float n1   = step(0.975, fbm(sp * 13.0, 3) * 0.5 + 0.5);
-    float n2   = step(0.991, fbm(sp * 35.0 + 1.9, 2) * 0.5 + 0.5);
-    float stars = n1 * 0.55 + n2 * 0.28;
-
-    // Faint Einstein arc brightening at the apparent photon-sphere angle
-    float arc = smoothstep(0.07, 0.0, abs(theta - 0.20)) * 0.22;
-
-    vec3 col = vec3(0.80, 0.88, 1.0);
-    float a  = (stars + arc) * 0.65;
-    gl_FragColor = vec4(col, a);
+  // Inner → mid → outer blackbody-ish temperature gradient.
+  vec3 diskGradient(float t){
+    return t < 0.4
+      ? mix(uColInner, uColMid, t / 0.4)
+      : mix(uColMid, uColOuter, (t - 0.4) / 0.6);
   }
-`
 
-// ── Relativistic Jet ────────────────────────────────────────────────────────
-// Two crossed PlaneGeometry meshes per jet give a volumetric column from any
-// viewing angle. uT0 flips the "base vs tip" direction so both jets use the
-// same shader: upper jet uT0=0 (vUv.y=0 is the BH surface), lower uT0=1.
+  // Emission + alpha at an equatorial-plane crossing point p, viewed along dir.
+  vec4 sampleDisk(vec3 p, vec3 dir){
+    float rr = length(p.xz);
+    float t  = (rr - uDiskInner) / (uDiskOuter - uDiskInner);
+    if (t < 0.0 || t > 1.0) return vec4(0.0);
 
-export const jetVertex = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // Soft inner/outer fade so the ring has no hard edges.
+    float edge = smoothstep(0.0, 0.07, t) * smoothstep(1.0, 0.72, t);
+
+    // Inner disk is far hotter/brighter (kept moderate so the temperature
+    // colours survive Bloom instead of clipping to white).
+    float bright = pow(1.0 - t, 2.2) * 1.1 + 0.04;
+    vec3  col    = diskGradient(t);
+
+    // Differential rotation (inner spins faster) + turbulent substructure.
+    float ang  = atan(p.z, p.x);
+    float spin = uTime * (0.55 / (0.25 + rr * 0.12));
+    float a2   = ang + spin;
+    vec3  sp   = vec3(cos(a2), sin(a2), 0.0) * rr * 0.5 + vec3(0.0, 0.0, uTime * 0.04);
+    float turb   = fbm(sp, 4) * 0.5 + 0.5;
+    float streak = fbm(vec3(a2 * 3.0, rr * 0.7, uTime * 0.1), 3) * 0.5 + 0.5;
+    bright *= (0.45 + 0.75 * turb) * (0.7 + 0.5 * streak);
+
+    // Relativistic Doppler beaming: the side rotating toward us is brighter and
+    // blue-shifted; the receding side dims and reddens (ties the physics to the
+    // site's cyan↔magenta palette).
+    vec3  orb  = normalize(vec3(-p.z, 0.0, p.x)); // circular orbital velocity (CCW)
+    float beam = dot(orb, -normalize(dir));
+    float dop  = pow(clamp(1.0 + 0.5 * beam, 0.0, 2.0), 3.0);
+    bright *= max(dop, 0.22); // floor keeps the receding side faintly visible
+    col = mix(col, vec3(0.75, 0.88, 1.00), clamp( beam, 0.0, 1.0) * 0.35);
+    col = mix(col, vec3(1.00, 0.32, 0.22), clamp(-beam, 0.0, 1.0) * 0.40);
+
+    float alpha = edge * clamp(bright * 0.7, 0.0, 1.0);
+    return vec4(col * bright, alpha);
   }
-`
 
-export const jetFragment = /* glsl */ `
-  precision mediump float;
-  varying vec2 vUv;
-  uniform float uTime;
-  uniform float uIntensity;
-  uniform float uT0;
+  void main(){
+    // Photon state in horizon-normalised, black-hole-centred coordinates.
+    vec3 ro = (cameraPosition - uCenter) / uRs;
+    vec3 rd = normalize(vWorldPos - cameraPosition);
 
-  ${noiseGLSL}
+    // Conserved specific angular momentum h² = |r × v|² (impact parameter²).
+    vec3  hvec = cross(ro, rd);
+    float h2   = dot(hvec, hvec);
 
-  void main() {
-    float t      = mix(vUv.y, 1.0 - vUv.y, uT0); // 0 = BH surface, 1 = tip
-    float radial = abs(vUv.x - 0.5) * 2.0;        // 0 = centre axis, 1 = edge
+    // Early-out: a ray contributes only if it can be captured / graze the photon
+    // sphere (impact parameter b ≲ 2.6) or cross the disk annulus. Any point on
+    // the straight ray is at distance ≥ b from the centre, so the equatorial
+    // crossing radius bounds the disk test. Bail on everything else (the void
+    // around and beyond the disk) before paying for the march.
+    float b = sqrt(h2);
+    float sCross = abs(rd.y) > 1e-4 ? -ro.y / rd.y : -1.0;
+    float crossRad = sCross > 0.0 ? length((ro + rd * sCross).xz) : 1e9;
+    if (b > 2.7 && crossRad > uDiskOuter + 1.5) discard;
 
-    float beam      = exp(-radial * radial * 9.0);
-    float lengthFade = pow(1.0 - t, 0.75);
+    vec3  pos = ro;
+    vec3  vel = rd;
+    float r   = length(pos);
+    float escapeR = max(r * 1.6, 12.0);
 
-    float turb = fbm(vec3(t * 7.0, radial * 3.0, uTime * 0.35), 3) * 0.5 + 0.5;
-    turb = 0.55 + 0.45 * turb;
+    vec4  acc       = vec4(0.0); // front-to-back composited disk colour + coverage
+    float hitShadow = 0.0;
 
-    vec3 col = mix(vec3(0.45, 0.85, 1.0), vec3(1.0, 1.0, 1.0), beam * 0.65);
-    float a  = beam * lengthFade * turb * uIntensity;
-    gl_FragColor = vec4(col * a, a);
+    int nx = 0; // composited disk crossings so far
+
+    for (int i = 0; i < STEPS; i++){
+      // Adaptive step: large far away, small near the hole for accuracy.
+      float dt = clamp(0.10 * (r - 1.0), 0.015, 0.35);
+      vec3 prevPos = pos;
+
+      vec3 g = -1.5 * h2 * pos / pow(dot(pos, pos) + 1e-4, 2.5);
+      vel += g * dt;
+      pos += vel * dt;
+      r = length(pos);
+
+      // Crossed the event horizon → captured (the shadow).
+      if (r < 1.0){ hitShadow = 1.0; break; }
+
+      // Crossed the equatorial plane → sample the disk and composite. Only the
+      // first two images (direct view + the primary lensed wrap-over) are kept;
+      // rays grazing the photon sphere cross many more times, and those finite-
+      // step higher-order images would otherwise smear into a banded "bullseye"
+      // inside the shadow. Their light is represented by the photon-ring term.
+      if (prevPos.y * pos.y < 0.0 && nx < 2){
+        float f  = prevPos.y / (prevPos.y - pos.y);
+        vec3  hp = mix(prevPos, pos, f);
+        vec4  d  = sampleDisk(hp, vel);
+        if (d.a > 0.0){
+          acc.rgb += (1.0 - acc.a) * d.rgb * d.a;
+          acc.a   += (1.0 - acc.a) * d.a;
+          nx++;
+        }
+      }
+
+      if (r > escapeR) break;
+      if (acc.a > 0.995) break;
+    }
+
+    vec3  outRgb = acc.rgb * uBrightness;
+    float outA   = acc.a;
+
+    // Photon ring: rays whose impact parameter sits at the critical value
+    // (b ≈ 3√3/2 ≈ 2.598, the photon sphere) pile light into a thin bright
+    // Einstein ring hugging the shadow, with a soft outer halo. Driving this off
+    // the analytic, continuous impact parameter b — rather than the closest
+    // approach sampled at discrete march steps — keeps it band-free.
+    float dB   = b - 2.598;
+    float ring = exp(-pow(dB / 0.055, 2.0)) + 0.22 * exp(-pow(dB / 0.2, 2.0));
+    vec3 ringCol = vec3(1.0, 0.93, 0.8);
+    outRgb += (1.0 - outA * 0.6) * ringCol * ring * 1.4;
+    outA = clamp(max(outA, ring * 0.9), 0.0, 1.0);
+
+    // Shadow is opaque black; everything else that escaped stays transparent so
+    // the deep-space void/starfield reads behind the hole.
+    if (hitShadow > 0.5) outA = 1.0;
+    if (outA <= 0.002) discard;
+
+    gl_FragColor = vec4(outRgb, outA);
   }
 `

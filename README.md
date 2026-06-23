@@ -75,7 +75,7 @@ src/
     galaxy/
       Galaxy.tsx            ← 120k-particle spiral (baked positions, shader spin)
     singularity/
-      Singularity.tsx       ← event horizon + photon ring + accretion disk + lensing dome + jets
+      Singularity.tsx       ← ray-marched lensed black hole (billboard) + soft polar jets
     vistas/
       Vistas.tsx            ← gallery plates: procedural imagery + noise-reveal, camera-driven
     shaders/
@@ -85,7 +85,7 @@ src/
       sun.glsl.ts           ← sun plasma + reusable additive glow + halo
       planet.glsl.ts        ← planet surface / clouds / rings
       galaxy.glsl.ts        ← galaxy particle spin (differential) + soft mote
-      singularity.glsl.ts   ← accretion disk (temperature/Doppler/FBM), lensing dome, relativistic jet
+      singularity.glsl.ts   ← photon-geodesic ray-march: lensed accretion disk + photon ring + Doppler, soft jet
       vistas.glsl.ts        ← procedural vista imagery + noise-displacement reveal wipe
 ```
 
@@ -120,7 +120,7 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
 | **Galaxy rotation** (overall + core/rim differential) | `GALAXY.rotationSpeed`, `GALAXY.coreSpin`, `GALAXY.rimSpin` |
 | **Galaxy camera arc** (orbit radius, height, sweep) | `FLIGHT.galaxy` |
-| **Singularity** (event horizon radius, disk inner/outer, tilt, lensing radius, jet length) | `SINGULARITY` in `config/scene.ts` |
+| **Singularity** (event horizon radius, disk inner/outer, jet length) | `SINGULARITY` in `config/scene.ts` |
 | **Singularity camera arc** (orbit radius, height, sweep) | `FLIGHT.singularity` |
 | **Vistas content** (titles, kickers, captions, palettes, kind, photos) | `config/vistas.ts` — add `src` + `credit` for real images |
 | **Vistas layout** (corridor depth, spread, plate size, reveal band) | `VISTAS` in `config/scene.ts` |

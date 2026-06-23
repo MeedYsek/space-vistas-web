@@ -114,9 +114,10 @@ export const GALAXY = {
 
 /* ── Singularity showpiece ─────────────────────────────────────────────────── */
 /**
- * A stellar-mass black hole: event horizon, accretion disk with Doppler
- * asymmetry, gravitational lensing dome, and relativistic polar jets.
- * Sits far down the −z axis beyond the galaxy.
+ * A stellar-mass black hole rendered by a single ray-marched billboard:
+ * event horizon shadow, gravitationally-lensed accretion disk (wraps over the
+ * top), a thin photon ring, and Doppler beaming. Sits far down the −z axis
+ * beyond the galaxy.
  */
 export const SINGULARITY = {
   /** Event horizon radius (world units). */
@@ -127,12 +128,6 @@ export const SINGULARITY = {
   diskInnerMul: 2.25,
   /** Accretion disk outer edge as multiple of radius. */
   diskOuterMul: 6.0,
-  /** Disk tilt from horizontal (radians; 0 = face-on from directly above). */
-  diskTilt: 0.15,
-  /** Radius of the lensing dome BackSide sphere. */
-  lensingRadius: 42,
-  /** Length of each relativistic jet (world units). */
-  jetLength: 55,
 }
 
 /* ── Deep-space vistas gallery (Milestone 5) ───────────────────────────────── */

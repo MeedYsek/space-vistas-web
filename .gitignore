@@ -5,6 +5,8 @@ dist-ssr
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+.claude/*
+!.claude/launch.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
