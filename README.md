@@ -48,7 +48,7 @@ src/
   config/
     scene.ts               ← THE control panel (read this first): palette, camera, acts, galaxy, vistas, postfx
     planets.ts             ← sun + 8 planets: radii, orbits, palettes, atmosphere/rings, card copy
-    vistas.ts              ← gallery content: titles, kickers, captions, palettes, procedural kind
+    vistas.ts              ← gallery content: titles, kickers, captions, palettes, procedural kind, src + credit for real photos
   App.tsx                  ← device profile, smooth scroll, ignite flag, canvas + overlay + cursor
   lib/
     useSmoothScroll.ts      ← Lenis ↔ GSAP ticker ↔ ScrollTrigger (single clock) + scroll lock
@@ -108,7 +108,8 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Hero title / subtitle / kicker** | `HERO_TITLE`, `HERO_SUBTITLE`, `HERO_KICKER` |
 | **Colours** (also mirrored in `tailwind.config.js`) | `PALETTE` |
 | **Star count** | `STARFIELD.count` (mobile: `MOBILE.starCount`) |
-| **Bright "hero" stars** | `STARFIELD.heroCount`, `STARFIELD.size` |
+| **Star brightness / size** | `STARFIELD.size` — smaller = dimmer (currently 14) |
+| **Bright "hero" stars** | `STARFIELD.heroCount` |
 | **Twinkle / drift** | `STARFIELD.twinkleSpeed`, `STARFIELD.driftSpeed` |
 | **Nebula richness** | `NEBULA.layers`, `NEBULA.octaves`, `NEBULA.intensity` |
 | **Parallax depth layers** | `DUST.counts`, `DUST.parallax`, `DUST.depth` |
@@ -121,11 +122,12 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Pointer-orbit while focused** | `FLIGHT.orbitAzimuth`, `FLIGHT.orbitElevation` |
 | **Planets** (size, orbit, colour, atmosphere, rings, copy) | `config/planets.ts` |
 | **Sun** (size, colours, brightness) | `SUN` in `config/planets.ts` |
+| **Galaxy brightness** | `GALAXY.brightness` — per-particle colour multiplier (currently 0.32) |
 | **Galaxy** (particle count, arms, winding, gradient, size) | `GALAXY` in `config/scene.ts` |
 | **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
 | **Galaxy rotation** (overall + core/rim differential) | `GALAXY.rotationSpeed`, `GALAXY.coreSpin`, `GALAXY.rimSpin` |
 | **Galaxy camera arc** (orbit radius, height, sweep) | `FLIGHT.galaxy` |
-| **Vistas content** (titles, kickers, captions, palettes, kind) | `config/vistas.ts` |
+| **Vistas content** (titles, kickers, captions, palettes, kind, photos) | `config/vistas.ts` — add `src` + `credit` for real images |
 | **Vistas layout** (corridor depth, spread, plate size, reveal band) | `VISTAS` in `config/scene.ts` |
 | **Vistas camera pan** | `FLIGHT.vistas` |
 | **Bloom** | `POSTFX.bloom.*` |
@@ -142,7 +144,8 @@ and `POSTFX.bloom.intensity` first.
 ## Art direction baked in
 
 - Near-black `#05060A` void with indigo/violet nebula tones and cyan/magenta/amber glows.
-- Everything blooms; stars twinkle and the field drifts slowly.
+- **Sun-primary lighting** — planet night sides are near-black (`ambient 0.04`); the terminator and rim glow are the only other light.
+- Stars and galaxy are kept dim so bright objects (sun, planet-lit hemispheres) read clearly; bloom only fires on genuinely bright surfaces.
 - Slow, weighty, zero-G motion (no snap, no bounce). Floaty pointer parallax.
 - Film grain + vignette over the whole frame for a cinematic, non-clinical read.
 
@@ -172,31 +175,33 @@ and `POSTFX.bloom.intensity` first.
 
 ---
 
-## Swapping in real imagery
+## Real imagery — vistas gallery
 
-The Deep-Space Vistas gallery currently renders **procedural** imagery (fbm in
-`vistas.glsl.ts`, driven by each vista's `kind` + palette in `config/vistas.ts`)
-and CSS-gradient stand-ins in the DOM lightbox. To use real photography, drop
-files into `public/textures/`, add a `src` URL to a vista, load it with drei's
-`useTexture`, pass it as a `uTex` uniform and sample it in place of the
-`vistaImage()` term (and set the card/lightbox `background` to the same image).
+Five NASA public-domain photos are already bundled in `public/textures/` and
+wired into the gallery:
 
-**Good, license-friendly sources:**
-- **NASA** images are generally public domain — <https://images.nasa.gov>,
-  Hubble (<https://hubblesite.org>), JWST (<https://webbtelescope.org>).
-- **ESO** images are released under **CC BY 4.0** — attribution required:
-  <https://www.eso.org/public/images/>. ESA/Hubble is also CC BY 4.0.
+| File | Subject | Credit |
+|---|---|---|
+| `carina.jpg` | JWST Cosmic Cliffs — NGC 3324 | NASA, ESA, CSA, STScI |
+| `andromeda.jpg` | M31 (GALEX + Spitzer composite) | NASA / JPL-Caltech |
+| `aurora.jpg` | Aurora australis from the ISS | NASA / ISS |
+| `lagoon.jpg` | Lagoon Nebula — M8 (Hubble) | NASA, ESA, STScI |
+| `saturn.jpg` | Saturn — Cassini final approach | NASA / JPL-Caltech / SSI |
 
-> ⚠️ Always check the specific image's license page before shipping, and keep an
-> attributions list for any CC BY material (ESO/ESA). NASA logos and mission
-> insignia have separate usage rules even when the imagery is public domain.
+All are **public domain**. To add more: drop a JPEG into `public/textures/`,
+then add `src: 'filename.jpg'` and `credit: '…'` to the matching entry in
+`config/vistas.ts`. The shader swaps the procedural image for the photo on load
+(cover-fit UV, aspect-ratio corrected); cards and the lightbox both show the
+real photo.
 
-Placeholder gradients/noise are used until then — no copyrighted assets are
-bundled in this repo. **The planets are fully procedural (shader noise), not
-textured.** To use real maps later, add a `map` URL to a planet in
-`config/planets.ts`, load it with drei's `useTexture`, and sample it in
-`planet.glsl.ts` in place of the `fbm(...)` surface term. NASA's planetary maps
-(e.g. the Blue Marble / SVS texture sets) are public domain.
+**The planets are fully procedural (shader noise), not textured.** To use real
+maps later, add a `map` URL to a planet in `config/planets.ts`, load it with
+drei's `useTexture`, and sample it in `planet.glsl.ts` in place of the
+`fbm(...)` surface term. NASA's planetary maps (e.g. the Blue Marble / SVS
+texture sets) are public domain.
+
+> ⚠️ ESO images are CC BY 4.0 (attribution required). Always check the specific
+> image's licence page before shipping non-NASA material.
 
 ---
 
@@ -219,7 +224,7 @@ procedural vistas for real NASA/ESO photography (see above).
 
 ## Verification — project complete
 
-**Verdict:** PASS · **Date:** 2026-06-22 · **Node:** v20.20.2 / Vite 5 /
+**Verdict:** PASS · **Date:** 2026-06-23 · **Node:** v20.20.2 / Vite 6 /
 Playwright headless Chromium · `tsc --noEmit` and `vite build` both clean.
 
 Verified via Playwright (headless Chromium runs `requestAnimationFrame`, unlike a

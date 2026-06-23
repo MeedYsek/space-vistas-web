@@ -72,7 +72,7 @@ export const planetFragment = /* glsl */ `
     vec3 H = normalize(L + V);
     float spec = pow(max(dot(N, H), 0.0), 80.0) * ocean * day;
 
-    vec3 dayCol = surf * (0.16 + day * 1.05);
+    vec3 dayCol = surf * (0.04 + day * 1.05);
     vec3 nightCol = uNightColor * uNight * (1.0 - day) * (1.0 - ocean) * smoothstep(0.45, 0.6, nn);
     vec3 color = dayCol + nightCol + spec * vec3(1.0, 0.96, 0.85);
 
@@ -107,7 +107,7 @@ export const cloudsFragment = /* glsl */ `
     vec3 p = dir * (3.5 + uFreq * 2.0) + vec3(uTime * uSpeed, 0.0, 0.0) + uSeed;
     float c = fbm(p, 5) * 0.5 + 0.5;
     c = smoothstep(0.5, 0.78, c);
-    float a = c * uOpacity * (0.12 + day);
+    float a = c * uOpacity * (0.04 + day);
     gl_FragColor = vec4(vec3(1.0) * (0.45 + day * 0.6), a);
   }
 `

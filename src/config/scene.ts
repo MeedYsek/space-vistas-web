@@ -41,7 +41,7 @@ export const STARFIELD = {
   /** Radius of the spherical shell stars are scattered through. */
   radius: 600,
   /** Global multiplier on point size (combine with per-star variation). */
-  size: 22,
+  size: 14,
   /** Twinkle speed range (sine on alpha). */
   twinkleSpeed: [0.4, 1.6] as [number, number],
   /** Whole-field drift in radians/second (very slow rotation). */
@@ -106,7 +106,7 @@ export const GALAXY = {
   /** Soft core-glow billboard intensity (0 = particles-only nucleus). */
   coreGlow: 0,
   /** Per-particle colour brightness multiplier. Lower = darker disk. */
-  brightness: 0.52,
+  brightness: 0.32,
   /** World placement + disk tilt (radians) for a gentle 3/4 reveal. */
   position: [0, -6, -520] as [number, number, number],
   tilt: -0.22,
