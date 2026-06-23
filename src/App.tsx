@@ -7,6 +7,7 @@ import StaticFallback from './components/StaticFallback'
 import Overlay from './components/Overlay'
 import Preloader from './components/Preloader'
 import Cursor from './components/Cursor'
+import ScrollToTop from './components/ScrollToTop'
 
 /**
  * App root.
@@ -68,6 +69,8 @@ export default function App() {
       {!profile.isMobile && <Cursor reducedMotion={reducedMotion} />}
 
       {profile.hasWebGL && <Preloader onComplete={handleIgnite} />}
+
+      <ScrollToTop reducedMotion={reducedMotion} />
     </>
   )
 }
