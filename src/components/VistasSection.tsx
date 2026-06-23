@@ -119,7 +119,15 @@ export default function VistasSection({ reducedMotion }: { reducedMotion: boolea
                   className="vista-thumb relative aspect-[3/2] overflow-hidden rounded-lg border border-white/10 transition-transform duration-500 group-hover:scale-[1.02]"
                   style={{ background: vistaBackground(v) }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  {v.src && (
+                    <img
+                      src={`/textures/${v.src}`}
+                      alt={v.title}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <span className="absolute bottom-3 left-4 right-4">
                     <span className="label block text-[0.55rem] text-white/60">{v.kicker}</span>
                     <span className="font-display mt-1 block text-xl text-white/90">{v.title}</span>
@@ -150,16 +158,28 @@ export default function VistasSection({ reducedMotion }: { reducedMotion: boolea
               ref={mediaRef}
               className="aspect-[3/2] w-full overflow-hidden rounded-xl border border-white/15 shadow-2xl"
               style={{ background: vistaBackground(active) }}
-            />
+            >
+              {active.src && (
+                <img
+                  src={`/textures/${active.src}`}
+                  alt={active.title}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
             <div className="vista-detail-text">
               <p className="label text-glow-cyan/80">{active.kicker}</p>
               <h3 className="font-display mt-3 text-4xl font-medium md:text-5xl">{active.title}</h3>
               <p className="mt-5 text-lg italic text-white/70">{active.caption}</p>
-              <p className="mt-6 max-w-sm text-sm text-white/40">
-                Placeholder imagery — procedurally generated. Real NASA (public
-                domain) or ESO/ESA (CC BY 4.0, attribution required) photography
-                drops in here later.
-              </p>
+              {active.credit ? (
+                <p className="mt-6 text-xs uppercase tracking-widest text-white/35">
+                  {active.credit}
+                </p>
+              ) : (
+                <p className="mt-6 text-xs uppercase tracking-widest text-white/35">
+                  Shader-generated · procedural imagery
+                </p>
+              )}
               <button
                 type="button"
                 data-cursor

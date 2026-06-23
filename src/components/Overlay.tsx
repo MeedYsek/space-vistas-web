@@ -164,7 +164,7 @@ export default function Overlay({
               <p className="font-display text-2xl">A Cathedral of Night</p>
               <p className="mt-3 max-w-xs text-sm text-white/40">
                 An interactive journey through the cosmos. Built with React Three
-                Fiber, GSAP and Lenis. Imagery placeholder — procedural.
+                Fiber, GSAP and Lenis. Photography: NASA public domain · ESA/STScI.
               </p>
               <div className="mt-6">
                 <AmbientAudio />
