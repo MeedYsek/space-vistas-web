@@ -105,6 +105,8 @@ export const GALAXY = {
   rimSpin: 0.32,
   /** Soft core-glow billboard intensity (0 = particles-only nucleus). */
   coreGlow: 0,
+  /** Per-particle colour brightness multiplier. Lower = darker disk. */
+  brightness: 0.52,
   /** World placement + disk tilt (radians) for a gentle 3/4 reveal. */
   position: [0, -6, -520] as [number, number, number],
   tilt: -0.22,

@@ -70,7 +70,7 @@ export default function Galaxy({ count = GALAXY.count }: GalaxyProps) {
       // converge at r→0, which would otherwise pile additive overlap into a
       // blown-out white blob.
       const coreDim = 0.22 + 0.78 * Math.min(1, rf / 0.22)
-      const b = (0.26 + (1 - rf) * 0.18) * coreDim
+      const b = (0.26 + (1 - rf) * 0.18) * coreDim * GALAXY.brightness
       colors[i * 3 + 0] = col.r * b
       colors[i * 3 + 1] = col.g * b
       colors[i * 3 + 2] = col.b * b
