@@ -76,7 +76,7 @@ export const SUN = {
   radius: 7,
   colorDeep: '#b3360b',
   colorHot: '#ffd27a',
-  brightness: 1.6,
+  brightness: 1.4,
   card: { name: 'The Sun', stat: '1,391,000 km', line: 'A cathedral lit by a single, patient flame.' },
 }
 

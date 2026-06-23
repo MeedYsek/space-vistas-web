@@ -34,7 +34,7 @@ export default function Sun() {
     () => ({
       uColor: { value: new THREE.Color(SUN.colorHot) },
       uPower: { value: 2.0 },
-      uIntensity: { value: 1.1 },
+      uIntensity: { value: 0.95 },
       uSunDir: { value: new THREE.Vector3(0, 0, 1) },
       uLitMix: { value: 0 },
     }),
@@ -44,7 +44,7 @@ export default function Sun() {
   const haloUniforms = useMemo(
     () => ({
       uColor: { value: new THREE.Color('#ffb15a') },
-      uIntensity: { value: 0.6 },
+      uIntensity: { value: 0.52 },
     }),
     [],
   )

@@ -72,7 +72,7 @@ export const planetFragment = /* glsl */ `
     vec3 H = normalize(L + V);
     float spec = pow(max(dot(N, H), 0.0), 80.0) * ocean * day;
 
-    vec3 dayCol = surf * (0.04 + day * 1.05);
+    vec3 dayCol = surf * (0.04 + day * 0.91);
     vec3 nightCol = uNightColor * uNight * (1.0 - day) * (1.0 - ocean) * smoothstep(0.45, 0.6, nn);
     vec3 color = dayCol + nightCol + spec * vec3(1.0, 0.96, 0.85);
 

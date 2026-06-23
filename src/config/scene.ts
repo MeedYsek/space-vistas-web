@@ -41,7 +41,7 @@ export const STARFIELD = {
   /** Radius of the spherical shell stars are scattered through. */
   radius: 600,
   /** Global multiplier on point size (combine with per-star variation). */
-  size: 14,
+  size: 12,
   /** Twinkle speed range (sine on alpha). */
   twinkleSpeed: [0.4, 1.6] as [number, number],
   /** Whole-field drift in radians/second (very slow rotation). */
@@ -57,7 +57,7 @@ export const NEBULA = {
   /** Drift speed of the noise field. */
   speed: 0.012,
   /** Overall opacity ceiling of the clouds. */
-  intensity: 0.32,
+  intensity: 0.28,
 }
 
 /* ── Parallax dust (depth layers between camera and far stars) ─────────────── */
@@ -106,7 +106,7 @@ export const GALAXY = {
   /** Soft core-glow billboard intensity (0 = particles-only nucleus). */
   coreGlow: 0,
   /** Per-particle colour brightness multiplier. Lower = darker disk. */
-  brightness: 0.32,
+  brightness: 0.28,
   /** World placement + disk tilt (radians) for a gentle 3/4 reveal. */
   position: [0, -6, -520] as [number, number, number],
   tilt: -0.22,
@@ -251,7 +251,7 @@ export const PRELOADER = {
 /* ── Post-processing ───────────────────────────────────────────────────────── */
 export const POSTFX = {
   bloom: {
-    intensity: 0.72,
+    intensity: 0.62,
     luminanceThreshold: 0.38,
     luminanceSmoothing: 0.75,
     mipmapBlur: true,
@@ -288,7 +288,7 @@ export const MOBILE = {
   dustCounts: [500, 900, 1500] as [number, number, number],
   disableChromaticAberration: true,
   disableFilmGrain: false,
-  bloomIntensity: 0.85,
+  bloomIntensity: 0.74,
   maxPixelRatio: 1.75,
 }
 
