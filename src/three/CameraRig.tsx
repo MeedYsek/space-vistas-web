@@ -85,7 +85,42 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
 
     stopPos(i, v.a)
     stopPos(i + 1, v.b)
-    v.solarLook.lerpVectors(v.a, v.b, t)
+
+    // Slerp the look-target around the sun instead of lerping through it.
+    // When two planets are on opposite sides the linear path cuts through the
+    // sun center, causing the camera to briefly stare into the star. We arc
+    // the direction vector around the sun so the transition sweeps off to the
+    // side rather than punching through.
+    const dA = v.a.distanceTo(sunPosition)
+    const dB = v.b.distanceTo(sunPosition)
+    if (dA > 1 && dB > 1) {
+      v.outward.copy(v.a).sub(sunPosition).normalize() // dirA (temp)
+      v.tangent.copy(v.b).sub(sunPosition).normalize() // dirB (temp)
+      let dot = clamp(v.outward.dot(v.tangent), -1, 1)
+      // For near-antiparallel vectors (planets nearly opposite), lift both
+      // slightly above the orbital plane so the slerp arc goes up-and-over
+      // rather than remaining ambiguous in-plane.
+      if (dot < -0.9) {
+        v.outward.y += 0.3; v.outward.normalize()
+        v.tangent.y  += 0.3; v.tangent.normalize()
+        dot = clamp(v.outward.dot(v.tangent), -1, 1)
+      }
+      const θ = Math.acos(dot)
+      const sinθ = Math.sin(θ)
+      const wA = sinθ > 1e-6 ? Math.sin((1 - t) * θ) / sinθ : 1 - t
+      const wB = sinθ > 1e-6 ? Math.sin(t * θ) / sinθ : t
+      v.solarLook
+        .set(
+          v.outward.x * wA + v.tangent.x * wB,
+          v.outward.y * wA + v.tangent.y * wB,
+          v.outward.z * wA + v.tangent.z * wB,
+        )
+        .multiplyScalar(lerp(dA, dB, t))
+        .add(sunPosition)
+    } else {
+      // One stop is the sun itself — linear lerp is fine.
+      v.solarLook.lerpVectors(v.a, v.b, t)
+    }
 
     const r = lerp(stopRadius(i), stopRadius(i + 1), t)
 
