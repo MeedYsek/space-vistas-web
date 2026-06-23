@@ -104,7 +104,7 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
     const camX = camera.position.x
     // Fade the whole gallery out as the return act begins so the journey can
     // collapse to a clean point of light.
-    const fade = 1 - smoothstep(flight.scroll, ACTS.vistasEnd, ACTS.outerStart + 0.04)
+    const fade = 1 - smoothstep(flight.scroll, ACTS.vistasEnd, ACTS.outerStart)
     // Gate reveals to the vistas act only — the galaxy camera arc sweeps through
     // x values that overlap with plate positions, which would ghost-reveal plates early.
     const vistaGate = smoothstep(flight.scroll, ACTS.vistasStart - 0.02, ACTS.vistasStart + 0.02)
@@ -132,7 +132,7 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
     tint.current.lerp(target, clamp(delta * 1.5, 0, 1))
     if (backdropRef.current) {
       backdropRef.current.uniforms.uColor.value.copy(tint.current)
-      backdropRef.current.uniforms.uIntensity.value = 0.06 + nearestCloseness * 0.16
+      backdropRef.current.uniforms.uIntensity.value = (0.06 + nearestCloseness * 0.16) * fade
     }
   })
 
