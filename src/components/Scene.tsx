@@ -5,6 +5,7 @@ import PostFX from '../three/PostFX'
 import CameraRig from '../three/CameraRig'
 import SolarSystem from '../three/solar/SolarSystem'
 import Galaxy from '../three/galaxy/Galaxy'
+import Singularity from '../three/singularity/Singularity'
 import Vistas from '../three/vistas/Vistas'
 import { STARFIELD, NEBULA, DUST, GALAXY, MOBILE, POSTFX } from '../config/scene'
 import type { DeviceProfile } from '../hooks/useDeviceProfile'
@@ -49,6 +50,7 @@ export default function Scene({ profile, reducedMotion, ignited }: SceneProps) {
         <>
           <SolarSystem showOrbits={!light} />
           <Galaxy count={galaxyCount} />
+          <Singularity />
           <Vistas lowPower={light} />
         </>
       )}

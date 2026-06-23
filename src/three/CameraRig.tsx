@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import gsap from 'gsap'
-import { CAMERA, FLIGHT, ACTS, GALAXY } from '../config/scene'
+import { CAMERA, FLIGHT, ACTS, GALAXY, SINGULARITY } from '../config/scene'
 import { PLANETS, SUN } from '../config/planets'
 import { sunPosition, planetPositions } from './solar/planetRegistry'
 import { flight } from '../lib/flight'
@@ -42,6 +42,9 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
       galaxyPos: new THREE.Vector3(),
       galaxyLook: new THREE.Vector3(),
       galaxyCenter: new THREE.Vector3(...GALAXY.position),
+      singularityPos: new THREE.Vector3(),
+      singularityLook: new THREE.Vector3(),
+      singularityCenter: new THREE.Vector3(...SINGULARITY.position),
       vistasPos: new THREE.Vector3(),
       vistasLook: new THREE.Vector3(),
       outerPos: new THREE.Vector3(),
@@ -170,6 +173,26 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
     v.galaxyLook.copy(v.galaxyCenter)
   }
 
+  /** Singularity act: orbit the black hole, starting high (face-on disk) and descending. */
+  const computeSingularity = (sp: number) => {
+    const g = FLIGHT.singularity
+    const p = clamp(sp, 0, 1)
+
+    let az = g.startAngle + p * g.sweep
+    let r = lerp(g.radius[0], g.radius[1], p)
+    let h = lerp(g.height[0], g.height[1], p)
+
+    az += pointer.ex * g.orbitAzimuth
+    h += -pointer.ey * g.orbitHeight
+
+    v.singularityPos.set(
+      v.singularityCenter.x + Math.sin(az) * r,
+      v.singularityCenter.y + h,
+      v.singularityCenter.z + Math.cos(az) * r,
+    )
+    v.singularityLook.copy(v.singularityCenter)
+  }
+
   /** Vistas act: a horizontal pan across the gallery corridor. */
   const computeVistas = (vp: number) => {
     const g = FLIGHT.vistas
@@ -200,17 +223,19 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
     const s = reducedMotion ? 0 : clamp(flight.scroll, 0, 1)
     const t = state.clock.elapsedTime
 
-    // Act weights (crossfade): hero → solar → galaxy → vistas → outer/return.
-    const enterSolar = smoothstep(s, ACTS.heroEnd, ACTS.solarStart)
-    const enterGalaxy = smoothstep(s, ACTS.solarEnd, ACTS.galaxyStart)
-    const enterVistas = smoothstep(s, ACTS.galaxyEnd, ACTS.vistasStart)
-    const enterOuter = smoothstep(s, ACTS.vistasEnd, ACTS.outerStart)
-    const wHero = 1 - enterSolar
-    const wSolar = enterSolar * (1 - enterGalaxy)
-    const wGalaxy = enterGalaxy * (1 - enterVistas)
-    const wVistas = enterVistas * (1 - enterOuter)
-    const wOuter = enterOuter
-    const total = wHero + wSolar + wGalaxy + wVistas + wOuter || 1
+    // Act weights (crossfade): hero → solar → galaxy → singularity → vistas → outer/return.
+    const enterSolar       = smoothstep(s, ACTS.heroEnd,          ACTS.solarStart)
+    const enterGalaxy      = smoothstep(s, ACTS.solarEnd,         ACTS.galaxyStart)
+    const enterSingularity = smoothstep(s, ACTS.galaxyEnd,        ACTS.singularityStart)
+    const enterVistas      = smoothstep(s, ACTS.singularityEnd,   ACTS.vistasStart)
+    const enterOuter       = smoothstep(s, ACTS.vistasEnd,        ACTS.outerStart)
+    const wHero        = 1 - enterSolar
+    const wSolar       = enterSolar       * (1 - enterGalaxy)
+    const wGalaxy      = enterGalaxy      * (1 - enterSingularity)
+    const wSingularity = enterSingularity * (1 - enterVistas)
+    const wVistas      = enterVistas      * (1 - enterOuter)
+    const wOuter       = enterOuter
+    const total = wHero + wSolar + wGalaxy + wSingularity + wVistas + wOuter || 1
 
     // HERO pose (+ idle breathing — cut under reduced motion).
     v.heroPos.set(...FLIGHT.hero.pos)
@@ -224,6 +249,10 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
     // GALAXY pose.
     const gp = (s - ACTS.galaxyStart) / (ACTS.galaxyEnd - ACTS.galaxyStart)
     computeGalaxy(gp)
+
+    // SINGULARITY pose.
+    const sp = (s - ACTS.singularityStart) / (ACTS.singularityEnd - ACTS.singularityStart)
+    computeSingularity(sp)
 
     // VISTAS pose.
     const vp = (s - ACTS.vistasStart) / (ACTS.vistasEnd - ACTS.vistasStart)
@@ -239,6 +268,7 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
       .addScaledVector(v.heroPos, wHero)
       .addScaledVector(v.solarPos, wSolar)
       .addScaledVector(v.galaxyPos, wGalaxy)
+      .addScaledVector(v.singularityPos, wSingularity)
       .addScaledVector(v.vistasPos, wVistas)
       .addScaledVector(v.outerPos, wOuter)
       .multiplyScalar(1 / total)
@@ -247,6 +277,7 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
       .addScaledVector(v.heroLook, wHero)
       .addScaledVector(v.solarLook, wSolar)
       .addScaledVector(v.galaxyLook, wGalaxy)
+      .addScaledVector(v.singularityLook, wSingularity)
       .addScaledVector(v.vistasLook, wVistas)
       .addScaledVector(v.outerLook, wOuter)
       .multiplyScalar(1 / total)

@@ -1,19 +1,9 @@
 # A Cathedral of Night
 
 A scroll-driven, award-style WebGL journey through the cosmos — stars, dust,
-nebulae and (across later milestones) a solar system, a particle galaxy and
+nebulae, a solar-system orrery, a particle galaxy, a black-hole singularity and
 deep-space vistas. Built with React + Vite + TypeScript, Three.js via React
-Three Fiber, GSAP + ScrollTrigger, and Lenis smooth scrolling.
-
-> **Status: complete — all 6 milestones.** A continuous scroll-driven flight:
-> preloader → hero → solar-system orrery → particle galaxy → deep-space vistas
-> gallery → a closing that collapses to a point of light. The final milestone is
-> the **performance / mobile / reduced-motion / fallback pass**: a unified "light"
-> path (mobile **or** low-power desktop) that trims particle counts, nebula layers,
-> chromatic aberration, bloom and vista shader detail; a reduced-motion path that
-> pins the camera at the hero, skips the heavy scenes entirely (calm starfield +
-> the full DOM narrative) and collapses the tall scroll regions; a clamped
-> `devicePixelRatio`; and a pure-CSS static-sky fallback when WebGL is unavailable.
+Three Fiber, GSAP + Lenis smooth scrolling.
 
 ---
 
@@ -71,7 +61,7 @@ src/
     Reveal.tsx              ← per-word blur-in type reveal (IntersectionObserver)
     StaticFallback.tsx      ← no-WebGL CSS background
   three/
-    CameraRig.tsx           ← camera director: hero/solar/galaxy/vistas/return acts + planet focus
+    CameraRig.tsx           ← camera director: hero/solar/galaxy/singularity/vistas/return acts + planet focus
     Starfield.tsx           ← 26k instanced shader stars (+ ignite warp)
     Nebula.tsx              ← additive fbm cloud planes
     ParallaxDust.tsx        ← 3 parallax depth layers
@@ -84,6 +74,8 @@ src/
       planetRegistry.ts     ← live planet world positions (camera follows these)
     galaxy/
       Galaxy.tsx            ← 120k-particle spiral (baked positions, shader spin)
+    singularity/
+      Singularity.tsx       ← event horizon + photon ring + accretion disk + lensing dome + jets
     vistas/
       Vistas.tsx            ← gallery plates: procedural imagery + noise-reveal, camera-driven
     shaders/
@@ -93,6 +85,7 @@ src/
       sun.glsl.ts           ← sun plasma + reusable additive glow + halo
       planet.glsl.ts        ← planet surface / clouds / rings
       galaxy.glsl.ts        ← galaxy particle spin (differential) + soft mote
+      singularity.glsl.ts   ← accretion disk (temperature/Doppler/FBM), lensing dome, relativistic jet
       vistas.glsl.ts        ← procedural vista imagery + noise-displacement reveal wipe
 ```
 
@@ -117,7 +110,7 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Camera flight path** (the scroll journey) | `FLIGHT.path` (poses), `FLIGHT.curveTension` |
 | **Ignite push + star warp** | `FLIGHT.introZ`, `FLIGHT.introDuration`, `FLIGHT.warpStart` |
 | **Preloader pacing** | `PRELOADER.minDuration` |
-| **Scroll acts** (when each scene plays) | `ACTS.heroEnd / solarStart / solarEnd / galaxyStart / galaxyEnd / outerStart` |
+| **Scroll acts** (when each scene plays) | `ACTS.heroEnd / solarStart / solarEnd / galaxyStart / galaxyEnd / singularityStart / singularityEnd / vistasStart / vistasEnd / outerStart` |
 | **Planet focus framing** | `FLIGHT.focusBack / focusBase / focusUp / focusSide` |
 | **Pointer-orbit while focused** | `FLIGHT.orbitAzimuth`, `FLIGHT.orbitElevation` |
 | **Planets** (size, orbit, colour, atmosphere, rings, copy) | `config/planets.ts` |
@@ -127,6 +120,8 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
 | **Galaxy rotation** (overall + core/rim differential) | `GALAXY.rotationSpeed`, `GALAXY.coreSpin`, `GALAXY.rimSpin` |
 | **Galaxy camera arc** (orbit radius, height, sweep) | `FLIGHT.galaxy` |
+| **Singularity** (event horizon radius, disk inner/outer, tilt, lensing radius, jet length) | `SINGULARITY` in `config/scene.ts` |
+| **Singularity camera arc** (orbit radius, height, sweep) | `FLIGHT.singularity` |
 | **Vistas content** (titles, kickers, captions, palettes, kind, photos) | `config/vistas.ts` — add `src` + `credit` for real images |
 | **Vistas layout** (corridor depth, spread, plate size, reveal band) | `VISTAS` in `config/scene.ts` |
 | **Vistas camera pan** | `FLIGHT.vistas` |
@@ -202,10 +197,6 @@ texture sets) are public domain.
 
 > ⚠️ ESO images are CC BY 4.0 (attribution required). Always check the specific
 > image's licence page before shipping non-NASA material.
-
----
-
-Possible future polish: the optional black-hole "Singularity" showpiece.
 
 ---
 

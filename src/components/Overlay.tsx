@@ -109,6 +109,32 @@ export default function Overlay({
         </div>
       </section>
 
+      {/* ── The Singularity ────────────────────────────────────────────────── */}
+      <section
+        id="singularity"
+        aria-label="The Singularity"
+        className="relative min-h-screen"
+        style={tall('200vh')}
+      >
+        <div className="flex min-h-screen items-center px-6 md:px-16">
+          <div className="max-w-xl">
+            <p className="label text-glow-cyan/80">IV · The Singularity</p>
+            <Reveal
+              as="h2"
+              text="A wound in space"
+              reducedMotion={reducedMotion}
+              className="font-display mt-5 text-4xl font-medium leading-[1.02] md:text-6xl"
+            />
+            <p className="mt-6 text-base text-white/55 md:text-lg">
+              At the far edge of the galaxy, something older and stranger — a
+              collapsed star so dense that not even light escapes. The accretion
+              disk burns at a million degrees. Two jets of plasma erupt from the
+              poles at nearly the speed of light. At the centre: silence.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Deep-Space Vistas (gallery + lightbox) ─────────────────────────── */}
       <section
         id="vistas"
@@ -139,7 +165,7 @@ export default function Overlay({
       >
         <div className="flex flex-1 items-center px-6 md:px-16">
           <div className="max-w-xl">
-            <p className="label text-glow-cyan/80">V · Return</p>
+            <p className="label text-glow-cyan/80">VI · Return</p>
             <Reveal
               as="h2"
               text="A single point of light"

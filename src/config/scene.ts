@@ -112,6 +112,29 @@ export const GALAXY = {
   tilt: -0.22,
 }
 
+/* ── Singularity showpiece ─────────────────────────────────────────────────── */
+/**
+ * A stellar-mass black hole: event horizon, accretion disk with Doppler
+ * asymmetry, gravitational lensing dome, and relativistic polar jets.
+ * Sits far down the −z axis beyond the galaxy.
+ */
+export const SINGULARITY = {
+  /** Event horizon radius (world units). */
+  radius: 8,
+  /** World position — placed well behind the galaxy (z = -900). */
+  position: [0, -15, -900] as [number, number, number],
+  /** Accretion disk inner edge as multiple of radius. */
+  diskInnerMul: 2.25,
+  /** Accretion disk outer edge as multiple of radius. */
+  diskOuterMul: 6.0,
+  /** Disk tilt from horizontal (radians; 0 = face-on from directly above). */
+  diskTilt: 0.15,
+  /** Radius of the lensing dome BackSide sphere. */
+  lensingRadius: 42,
+  /** Length of each relativistic jet (world units). */
+  jetLength: 55,
+}
+
 /* ── Deep-space vistas gallery (Milestone 5) ───────────────────────────────── */
 /**
  * A row of large procedural plates the camera pans past, sitting between the
@@ -160,6 +183,19 @@ type Vec3 = [number, number, number]
 export const FLIGHT = {
   /** Opening wide shot — the sun is a distant bloom among the stars. */
   hero: { pos: [0, 6, 150] as Vec3, look: [0, 0, 0] as Vec3 },
+
+  /**
+   * SINGULARITY act: a slow orbital arc around the black hole, starting high
+   * (face-on to the accretion disk) and descending so the jets become visible.
+   */
+  singularity: {
+    startAngle: 1.2,
+    sweep: -1.8,
+    radius: [100, 80] as [number, number],
+    height: [38, 12] as [number, number],
+    orbitAzimuth: 0.15,
+    orbitHeight: 10,
+  },
 
   /**
    * GALAXY act: a slow orbital arc around the galaxy centre (GALAXY.position).
@@ -232,13 +268,15 @@ export const FLIGHT = {
  */
 export const ACTS = {
   heroEnd: 0.06,
-  solarStart: 0.09,
-  solarEnd: 0.45,
-  galaxyStart: 0.485,
-  galaxyEnd: 0.63,
-  vistasStart: 0.665,
-  vistasEnd: 0.86,
-  outerStart: 0.89,
+  solarStart: 0.08,
+  solarEnd: 0.40,
+  galaxyStart: 0.42,
+  galaxyEnd: 0.56,
+  singularityStart: 0.60,  // crossfade from galaxy end
+  singularityEnd: 0.72,
+  vistasStart: 0.74,
+  vistasEnd: 0.88,
+  outerStart: 0.90,
 }
 
 /* ── Preloader ─────────────────────────────────────────────────────────────── */
@@ -276,7 +314,7 @@ export const SCROLL = {
   /** Multiplies wheel delta. <1 makes the long cosmic scroll feel weighty. */
   wheelMultiplier: 0.9,
   /** Total scroll length of the experience, in viewport heights. */
-  pageHeightVH: 600,
+  pageHeightVH: 750,
 }
 
 /* ── Mobile overrides (merged over the above on small / low-power devices) ──── */
