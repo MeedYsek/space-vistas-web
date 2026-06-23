@@ -1,0 +1,182 @@
+import { useMemo, useRef } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import type { PlanetConfig } from '../../config/planets'
+import { planetPositions } from './planetRegistry'
+import { glowVertex, glowFragment } from '../shaders/sun.glsl'
+import {
+  planetVertex,
+  planetFragment,
+  cloudsFragment,
+  ringVertex,
+  ringFragment,
+} from '../shaders/planet.glsl'
+
+interface PlanetProps {
+  config: PlanetConfig
+  index: number
+}
+
+/**
+ * A single planet: orbits the sun on a (slightly inclined) ellipse, spins on a
+ * tilted axis, and renders up to four shells — surface, atmosphere rim, cloud
+ * layer and rings. The live sun direction is fed to every shader each frame so
+ * the terminator and rim glow stay correct as it orbits, and the planet's world
+ * position is published to the registry for the camera to follow.
+ */
+export default function Planet({ config, index }: PlanetProps) {
+  const orbitRef = useRef<THREE.Group>(null)
+  const spinRef = useRef<THREE.Group>(null)
+  const surfMat = useRef<THREE.ShaderMaterial>(null)
+  const cloudMat = useRef<THREE.ShaderMaterial>(null)
+  const atmoMat = useRef<THREE.ShaderMaterial>(null)
+  const ringMat = useRef<THREE.ShaderMaterial>(null)
+
+  const sunDir = useRef(new THREE.Vector3(1, 0, 0))
+
+  const surfaceUniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uSunDir: { value: sunDir.current },
+      uColorA: { value: new THREE.Color(config.colorA) },
+      uColorB: { value: new THREE.Color(config.colorB) },
+      uFreq: { value: config.surfaceFreq },
+      uBands: { value: config.bands },
+      uSeed: { value: index * 13.7 },
+      uOcean: { value: config.ocean },
+      uOceanColor: { value: new THREE.Color(config.oceanColor) },
+      uOceanLevel: { value: config.oceanLevel },
+      uNightColor: { value: new THREE.Color(config.nightColor) },
+      uNight: { value: config.night },
+    }),
+    [config, index],
+  )
+
+  const atmoUniforms = useMemo(() => {
+    if (!config.atmosphere) return null
+    return {
+      uColor: { value: new THREE.Color(config.atmosphere.color) },
+      uPower: { value: config.atmosphere.power },
+      uIntensity: { value: config.atmosphere.intensity },
+      uSunDir: { value: sunDir.current },
+      uLitMix: { value: 1 },
+    }
+  }, [config])
+
+  const cloudUniforms = useMemo(() => {
+    if (!config.clouds) return null
+    return {
+      uTime: { value: 0 },
+      uSunDir: { value: sunDir.current },
+      uOpacity: { value: config.clouds.opacity },
+      uSpeed: { value: config.clouds.speed },
+      uSeed: { value: index * 7.3 },
+      uFreq: { value: config.surfaceFreq * 1.3 },
+    }
+  }, [config, index])
+
+  const ringUniforms = useMemo(() => {
+    if (!config.ring) return null
+    return {
+      uInner: { value: config.ring.inner * config.radius },
+      uOuter: { value: config.ring.outer * config.radius },
+      uColor: { value: new THREE.Color(config.ring.color) },
+      uOpacity: { value: config.ring.opacity },
+      uSunDir: { value: sunDir.current },
+    }
+  }, [config])
+
+  useFrame((state, delta) => {
+    const t = state.clock.elapsedTime
+    const a = config.phase + t * config.orbitSpeed
+    const x = Math.cos(a) * config.orbit
+    const zFlat = Math.sin(a) * config.orbit
+
+    if (orbitRef.current) {
+      orbitRef.current.position.set(
+        x,
+        zFlat * Math.sin(config.inclination),
+        zFlat * Math.cos(config.inclination),
+      )
+      // Publish world position + recompute sun direction (sun is at origin).
+      planetPositions[index].copy(orbitRef.current.position)
+      sunDir.current.copy(orbitRef.current.position).negate().normalize()
+    }
+
+    if (spinRef.current) spinRef.current.rotation.y += config.spin * delta
+    if (cloudMat.current) cloudMat.current.uniforms.uTime.value += delta
+    // surface/atmosphere/ring uniforms share the same sunDir Vector3 object
+    // (mutated above), so the terminator + rim glow update with no reassignment.
+  })
+
+  return (
+    <group ref={orbitRef}>
+      {/* Atmosphere rim (symmetric — no need to tilt/spin). */}
+      {atmoUniforms && (
+        <mesh scale={config.radius * 1.06}>
+          <sphereGeometry args={[1, 48, 48]} />
+          <shaderMaterial
+            ref={atmoMat}
+            vertexShader={glowVertex}
+            fragmentShader={glowFragment}
+            uniforms={atmoUniforms}
+            transparent
+            depthWrite={false}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
+
+      {/* Axial tilt group. */}
+      <group rotation={[0, 0, config.tilt]}>
+        <group ref={spinRef}>
+          {/* Surface */}
+          <mesh>
+            <sphereGeometry args={[config.radius, 64, 64]} />
+            <shaderMaterial
+              ref={surfMat}
+              vertexShader={planetVertex}
+              fragmentShader={planetFragment}
+              uniforms={surfaceUniforms}
+            />
+          </mesh>
+
+          {/* Clouds */}
+          {cloudUniforms && (
+            <mesh scale={1.02}>
+              <sphereGeometry args={[config.radius, 48, 48]} />
+              <shaderMaterial
+                ref={cloudMat}
+                vertexShader={planetVertex}
+                fragmentShader={cloudsFragment}
+                uniforms={cloudUniforms}
+                transparent
+                depthWrite={false}
+                blending={THREE.NormalBlending}
+              />
+            </mesh>
+          )}
+        </group>
+
+        {/* Rings (in the equatorial plane, tilted with the axis). */}
+        {ringUniforms && config.ring && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry
+              args={[config.ring.inner * config.radius, config.ring.outer * config.radius, 128]}
+            />
+            <shaderMaterial
+              ref={ringMat}
+              vertexShader={ringVertex}
+              fragmentShader={ringFragment}
+              uniforms={ringUniforms}
+              transparent
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )}
+      </group>
+    </group>
+  )
+}

@@ -1,0 +1,260 @@
+# A Cathedral of Night
+
+A scroll-driven, award-style WebGL journey through the cosmos — stars, dust,
+nebulae and (across later milestones) a solar system, a particle galaxy and
+deep-space vistas. Built with React + Vite + TypeScript, Three.js via React
+Three Fiber, GSAP + ScrollTrigger, and Lenis smooth scrolling.
+
+> **Status: complete — all 6 milestones.** A continuous scroll-driven flight:
+> preloader → hero → solar-system orrery → particle galaxy → deep-space vistas
+> gallery → a closing that collapses to a point of light. The final milestone is
+> the **performance / mobile / reduced-motion / fallback pass**: a unified "light"
+> path (mobile **or** low-power desktop) that trims particle counts, nebula layers,
+> chromatic aberration, bloom and vista shader detail; a reduced-motion path that
+> pins the camera at the hero, skips the heavy scenes entirely (calm starfield +
+> the full DOM narrative) and collapses the tall scroll regions; a clamped
+> `devicePixelRatio`; and a pure-CSS static-sky fallback when WebGL is unavailable.
+
+---
+
+## Run it
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+```
+
+Build / preview a production bundle:
+
+```bash
+npm run build
+npm run preview
+```
+
+Type-check only:
+
+```bash
+npm run typecheck
+```
+
+Requires Node 18+ (developed on Node 22).
+
+---
+
+## Where things live
+
+```
+src/
+  config/
+    scene.ts               ← THE control panel (read this first): palette, camera, acts, galaxy, vistas, postfx
+    planets.ts             ← sun + 8 planets: radii, orbits, palettes, atmosphere/rings, card copy
+    vistas.ts              ← gallery content: titles, kickers, captions, palettes, procedural kind
+  App.tsx                  ← device profile, smooth scroll, ignite flag, canvas + overlay + cursor
+  lib/
+    useSmoothScroll.ts      ← Lenis ↔ GSAP ticker ↔ ScrollTrigger (single clock) + scroll lock
+    pointer.ts              ← shared mouse/gyro parallax store
+    flight.ts               ← shared camera-flight state (scroll progress, warp, intro)
+    solarStore.ts           ← which body is focused (drives the info-cards)
+    useMagnetic.ts          ← magnetic-hover hook for buttons/links
+  hooks/
+    useDeviceProfile.ts     ← mobile / WebGL / low-power detection
+    useReducedMotion.ts     ← prefers-reduced-motion
+  components/
+    Experience.tsx          ← the persistent <Canvas> (mounts once)
+    Scene.tsx               ← scene graph (compositional)
+    Preloader.tsx           ← ring + pulsing star + count, ignites the scene
+    Overlay.tsx             ← ALL semantic DOM text (accessible layer)
+    PlanetCards.tsx         ← floating planet info-cards (name / stat / poetic line)
+    VistasSection.tsx       ← DOM gallery cards + GSAP FLIP lightbox
+    AmbientAudio.tsx        ← optional Web-Audio drone toggle (off by default)
+    Cursor.tsx              ← glowing custom cursor + trailing ring
+    Reveal.tsx              ← per-word blur-in type reveal (IntersectionObserver)
+    StaticFallback.tsx      ← no-WebGL CSS background
+  three/
+    CameraRig.tsx           ← camera director: hero/solar/galaxy/vistas/return acts + planet focus
+    Starfield.tsx           ← 26k instanced shader stars (+ ignite warp)
+    Nebula.tsx              ← additive fbm cloud planes
+    ParallaxDust.tsx        ← 3 parallax depth layers
+    PostFX.tsx              ← bloom / chromatic aberration / vignette / grain
+    solar/
+      SolarSystem.tsx       ← assembles sun + planets + orbit guides
+      Sun.tsx               ← plasma surface + corona + halo
+      Planet.tsx            ← surface + atmosphere + clouds + rings, orbit + spin
+      Orbits.tsx            ← faint elliptical orbit guides
+      planetRegistry.ts     ← live planet world positions (camera follows these)
+    galaxy/
+      Galaxy.tsx            ← 120k-particle spiral (baked positions, shader spin)
+    vistas/
+      Vistas.tsx            ← gallery plates: procedural imagery + noise-reveal, camera-driven
+    shaders/
+      noise.glsl.ts         ← shared simplex noise + fbm
+      starfield.glsl.ts     ← star vertex/fragment (+ uWarp)
+      nebula.glsl.ts        ← nebula vertex/fragment
+      sun.glsl.ts           ← sun plasma + reusable additive glow + halo
+      planet.glsl.ts        ← planet surface / clouds / rings
+      galaxy.glsl.ts        ← galaxy particle spin (differential) + soft mote
+      vistas.glsl.ts        ← procedural vista imagery + noise-displacement reveal wipe
+```
+
+Shaders are kept in their own `*.glsl.ts` modules (exported as template strings)
+so they read like real shader files without needing an extra Vite GLSL plugin.
+
+---
+
+## The knobs (everything in `src/config/scene.ts`)
+
+| What you want to change | Knob |
+| --- | --- |
+| **Hero title / subtitle / kicker** | `HERO_TITLE`, `HERO_SUBTITLE`, `HERO_KICKER` |
+| **Colours** (also mirrored in `tailwind.config.js`) | `PALETTE` |
+| **Star count** | `STARFIELD.count` (mobile: `MOBILE.starCount`) |
+| **Bright "hero" stars** | `STARFIELD.heroCount`, `STARFIELD.size` |
+| **Twinkle / drift** | `STARFIELD.twinkleSpeed`, `STARFIELD.driftSpeed` |
+| **Nebula richness** | `NEBULA.layers`, `NEBULA.octaves`, `NEBULA.intensity` |
+| **Parallax depth layers** | `DUST.counts`, `DUST.parallax`, `DUST.depth` |
+| **Camera float / sway** | `CAMERA.pointerSway`, `CAMERA.pointerEase`, `CAMERA.idle*` |
+| **Camera flight path** (the scroll journey) | `FLIGHT.path` (poses), `FLIGHT.curveTension` |
+| **Ignite push + star warp** | `FLIGHT.introZ`, `FLIGHT.introDuration`, `FLIGHT.warpStart` |
+| **Preloader pacing** | `PRELOADER.minDuration` |
+| **Scroll acts** (when each scene plays) | `ACTS.heroEnd / solarStart / solarEnd / galaxyStart / galaxyEnd / outerStart` |
+| **Planet focus framing** | `FLIGHT.focusBack / focusBase / focusUp / focusSide` |
+| **Pointer-orbit while focused** | `FLIGHT.orbitAzimuth`, `FLIGHT.orbitElevation` |
+| **Planets** (size, orbit, colour, atmosphere, rings, copy) | `config/planets.ts` |
+| **Sun** (size, colours, brightness) | `SUN` in `config/planets.ts` |
+| **Galaxy** (particle count, arms, winding, gradient, size) | `GALAXY` in `config/scene.ts` |
+| **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
+| **Galaxy rotation** (overall + core/rim differential) | `GALAXY.rotationSpeed`, `GALAXY.coreSpin`, `GALAXY.rimSpin` |
+| **Galaxy camera arc** (orbit radius, height, sweep) | `FLIGHT.galaxy` |
+| **Vistas content** (titles, kickers, captions, palettes, kind) | `config/vistas.ts` |
+| **Vistas layout** (corridor depth, spread, plate size, reveal band) | `VISTAS` in `config/scene.ts` |
+| **Vistas camera pan** | `FLIGHT.vistas` |
+| **Bloom** | `POSTFX.bloom.*` |
+| **Chromatic aberration** | `POSTFX.chromaticAberration.offset` |
+| **Vignette / film grain** | `POSTFX.vignette.*`, `POSTFX.filmGrain.opacity` |
+| **Scroll pacing** | `SCROLL.lerp`, `SCROLL.wheelMultiplier`, `SCROLL.pageHeightVH` |
+| **Mobile overrides** | `MOBILE.*` |
+
+Tip: to dial in performance vs. beauty, lower `STARFIELD.count`, `NEBULA.layers`
+and `POSTFX.bloom.intensity` first.
+
+---
+
+## Art direction baked in
+
+- Near-black `#05060A` void with indigo/violet nebula tones and cyan/magenta/amber glows.
+- Everything blooms; stars twinkle and the field drifts slowly.
+- Slow, weighty, zero-G motion (no snap, no bounce). Floaty pointer parallax.
+- Film grain + vignette over the whole frame for a cinematic, non-clinical read.
+
+---
+
+## Accessibility, performance & degradation (all wired)
+
+- **Semantic DOM** — all copy (hero, planet facts, vista captions, footer) is real
+  HTML in `Overlay.tsx` behind the canvas: selectable, keyboard-navigable, with
+  focus rings and `sr-only` equivalents for the floating cards + gallery. The
+  experience is fully understandable with the 3D removed.
+- **`prefers-reduced-motion`** — skips Lenis smoothing, cuts all camera flight
+  (the camera holds at the hero) and idle breathing, disables magnetic/cursor lag
+  and the FLIP/type-reveal animations (gentle fades only). Because the camera is
+  pinned, the heavy scenes it would fly to (solar / galaxy / vistas) are **not
+  mounted** at all — a calm static starfield + the full DOM narrative — and the
+  tall scroll regions collapse to a single screen each.
+- **Light path** (mobile **or** low-power desktop, `profile.isLowPower`) — trims
+  star/galaxy/dust counts and nebula layers, drops chromatic aberration, lowers
+  bloom, reduces the vista shader's fbm octaves (`uOctaves`) and hides the custom
+  cursor (touch keeps native behaviour; parallax leans on the gyro).
+- **No-WebGL** devices get `StaticFallback.tsx` (pure-CSS sky) instead of a blank
+  screen, with the same `Overlay` on top.
+- **`devicePixelRatio`** is clamped (≤2 desktop, ≤1.75 mobile); particles use
+  instancing/`Points`, off-screen plates are frustum-culled, and Three resources
+  are disposed on unmount.
+
+---
+
+## Swapping in real imagery
+
+The Deep-Space Vistas gallery currently renders **procedural** imagery (fbm in
+`vistas.glsl.ts`, driven by each vista's `kind` + palette in `config/vistas.ts`)
+and CSS-gradient stand-ins in the DOM lightbox. To use real photography, drop
+files into `public/textures/`, add a `src` URL to a vista, load it with drei's
+`useTexture`, pass it as a `uTex` uniform and sample it in place of the
+`vistaImage()` term (and set the card/lightbox `background` to the same image).
+
+**Good, license-friendly sources:**
+- **NASA** images are generally public domain — <https://images.nasa.gov>,
+  Hubble (<https://hubblesite.org>), JWST (<https://webbtelescope.org>).
+- **ESO** images are released under **CC BY 4.0** — attribution required:
+  <https://www.eso.org/public/images/>. ESA/Hubble is also CC BY 4.0.
+
+> ⚠️ Always check the specific image's license page before shipping, and keep an
+> attributions list for any CC BY material (ESO/ESA). NASA logos and mission
+> insignia have separate usage rules even when the imagery is public domain.
+
+Placeholder gradients/noise are used until then — no copyrighted assets are
+bundled in this repo. **The planets are fully procedural (shader noise), not
+textured.** To use real maps later, add a `map` URL to a planet in
+`config/planets.ts`, load it with drei's `useTexture`, and sample it in
+`planet.glsl.ts` in place of the `fbm(...)` surface term. NASA's planetary maps
+(e.g. the Blue Marble / SVS texture sets) are public domain.
+
+---
+
+## Roadmap
+
+1. ✅ **Scaffold + smooth scroll + persistent canvas + starfield + post-processing**
+2. ✅ **Hero polish + animated preloader + scroll-driven camera rig**
+3. ✅ **Solar system orrery with shader planets (sun, terminators, atmospheres, rings)**
+4. ✅ **Galaxy particle centerpiece (120k particles, differential spin, camera arc)**
+5. ✅ **Vistas gallery + closing + custom cursor + magnetic buttons + type reveals**
+6. ✅ **Performance pass, mobile, reduced-motion, full fallbacks** ← complete
+
+All six milestones are in. Possible future polish (not in the brief's build
+order): the optional black-hole "Singularity" showpiece; smoothing the rare
+solar-act moment where the camera frames the sun while interpolating its
+look-target between two planets on opposite sides of it; and swapping the
+procedural vistas for real NASA/ESO photography (see above).
+
+---
+
+## Verification — project complete
+
+**Verdict:** PASS · **Date:** 2026-06-22 · **Node:** v20.20.2 / Vite 5 /
+Playwright headless Chromium · `tsc --noEmit` and `vite build` both clean.
+
+Verified via Playwright (headless Chromium runs `requestAnimationFrame`, unlike a
+backgrounded preview tab) with real wheel-scrolling end-to-end:
+
+1. **Preloader → ignite** — ring + pulsing star + count, then the camera push and
+   hero resolving from blur, no hard cut.
+2. **Solar act** — real scroll frames each planet at its dwell centre with the
+   matching info-card (e.g. Earth → "the pale blue dot"); Saturn's rings, the
+   galaxy foreshadowed in the distance.
+3. **Galaxy act** — the 120k-point spiral arcs from a high 3/4 view down to a
+   dramatic angle; warm core, cool arms, differential spin.
+4. **Vistas act** — procedural plates resolve via the noise wipe as the camera
+   pans; DOM gallery cards open full-screen with the GSAP FLIP lightbox.
+5. **Return** — the gallery fades and the journey collapses to a distant point of
+   light; the floating footer (newsletter, socials, ambient-drone toggle) reads
+   over a scrim.
+6. **Custom cursor**, magnetic CTA, and per-word type reveals all fire.
+7. **Mobile** (390×844, touch) renders the full light path; **reduced-motion**
+   pins the camera and drops the heavy scenes (35 meshes → 5) with the page
+   collapsed to compact sections; **no console/page errors** in any run.
+
+### Architecture note — canvas positioning
+
+The "pitch black during the solar scroll" symptom was **not** a headless GPU
+limitation — it reproduced in Chrome and Safari. Root cause: the persistent
+`<Canvas>` was being positioned with the `.experience-canvas` **stylesheet
+class** (`position: fixed; inset: 0`), but React Three Fiber writes **inline
+styles** on its container div (`position: relative; width/height: 100%`), and
+inline styles win over a class. With `height: 100%` resolving against a
+height-auto parent, the canvas collapsed to R3F's default ~150px and sat in
+normal document flow — so it scrolled off the top after the hero, leaving only
+the black `<body>`. The 3D was rendering correctly the whole time, just into an
+off-screen canvas.
+
+Fix: pass the full-viewport positioning via the `style` prop on `<Canvas>` (R3F
+merges `style` *after* its own defaults, so it wins) instead of relying on the
+stylesheet class — see `src/components/Experience.tsx`.

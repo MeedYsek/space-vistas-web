@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --void: #05060a;
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--void);
+  color: #e7eaff;
+  font-family: 'Inter', system-ui, sans-serif;
+  /* Hide the native cursor; the custom cursor (Milestone 5) takes over on
+     pointer-fine devices. Fallback to auto on touch. */
+  overflow-x: hidden;
+}
+
+/* Lenis smooth-scroll required styles. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* The persistent WebGL canvas lives behind everything and ignores pointer
+   events so the DOM overlay stays interactive. */
+.experience-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Headings: wide, confident display type. */
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* Tracked label caps used for kickers / small UI. */
+.label {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+/* Reduced-motion users: kill long transitions, keep gentle fades only. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Accessible focus ring on the dark canvas. */
+:focus-visible {
+  outline: 2px solid #5ad7ff;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Hero text resolving from blur — the placeholder for the SplitText
+   per-line reveal that arrives in Milestone 5. */
+.hero-reveal {
+  animation: heroIn 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+@keyframes heroIn {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Preloader: a single pulsing star at the centre of the progress ring. */
+.preloader-star {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 0 8px 2px rgba(90, 215, 255, 0.9),
+    0 0 22px 6px rgba(255, 90, 210, 0.55),
+    0 0 44px 14px rgba(90, 215, 255, 0.25);
+  animation: starPulse 1.8s ease-in-out infinite;
+}
+@keyframes starPulse {
+  0%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+
+/* Floating scroll cue. */
+.scroll-cue {
+  animation: cueFloat 2.4s ease-in-out infinite;
+  transform-origin: top;
+}
+@keyframes cueFloat {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 0.9;
+  }
+}
+
+/* ── Custom cursor (Milestone 5) ─────────────────────────────────────────────
+   A glowing dot tracking the pointer + a trailing ring that swells on hover. */
+.cursor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+.has-custom-cursor,
+.has-custom-cursor a,
+.has-custom-cursor button,
+.has-custom-cursor [data-cursor] {
+  cursor: none;
+}
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition: opacity 0.3s ease;
+}
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  box-shadow:
+    0 0 8px 2px rgba(90, 215, 255, 0.9),
+    0 0 16px 5px rgba(255, 90, 210, 0.4);
+}
+.cursor-ring {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(173, 197, 255, 0.55);
+  transition:
+    opacity 0.3s ease,
+    width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+.cursor-ring--hover {
+  width: 58px;
+  height: 58px;
+  border-color: rgba(90, 215, 255, 0.9);
+  background: rgba(90, 215, 255, 0.08);
+}
+
+/* ── Type reveals (Milestone 5): per-word blur-in, staggered ──────────────── */
+.reveal-word {
+  display: inline-block;
+  vertical-align: top;
+}
+.reveal-word__inner {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(0.5em);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal--in .reveal-word__inner {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+
+/* Magnetic buttons + glowing link hovers (Milestone 5). */
+.magnetic {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.link-glow {
+  position: relative;
+  transition:
+    color 0.3s ease,
+    text-shadow 0.3s ease;
+}
+.link-glow:hover {
+  color: #fff;
+  text-shadow: 0 0 18px rgba(90, 215, 255, 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-reveal {
+    animation: none;
+  }
+  .scroll-cue,
+  .preloader-star {
+    animation: none;
+  }
+  .reveal-word__inner {
+    transition: opacity 0.4s ease;
+    filter: none;
+    transform: none;
+  }
+  .magnetic {
+    transition: none;
+  }
+}
