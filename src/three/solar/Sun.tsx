@@ -33,7 +33,7 @@ export default function Sun() {
   const coronaUniforms = useMemo(
     () => ({
       uColor: { value: new THREE.Color(SUN.colorHot) },
-      uPower: { value: 2.0 },
+      uPower: { value: 4.0 },
       uIntensity: { value: 0.95 },
       uSunDir: { value: new THREE.Vector3(0, 0, 1) },
       uLitMix: { value: 0 },
@@ -68,7 +68,7 @@ export default function Sun() {
 
       {/* Corona shell */}
       <mesh>
-        <sphereGeometry args={[SUN.radius * 1.35, 32, 32]} />
+        <sphereGeometry args={[SUN.radius * 1.15, 32, 32]} />
         <shaderMaterial
           vertexShader={glowVertex}
           fragmentShader={glowFragment}

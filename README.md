@@ -108,7 +108,7 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Hero title / subtitle / kicker** | `HERO_TITLE`, `HERO_SUBTITLE`, `HERO_KICKER` |
 | **Colours** (also mirrored in `tailwind.config.js`) | `PALETTE` |
 | **Star count** | `STARFIELD.count` (mobile: `MOBILE.starCount`) |
-| **Star brightness / size** | `STARFIELD.size` — smaller = dimmer (currently 14) |
+| **Star brightness / size** | `STARFIELD.size` — smaller = dimmer (currently 12) |
 | **Bright "hero" stars** | `STARFIELD.heroCount` |
 | **Twinkle / drift** | `STARFIELD.twinkleSpeed`, `STARFIELD.driftSpeed` |
 | **Nebula richness** | `NEBULA.layers`, `NEBULA.octaves`, `NEBULA.intensity` |
@@ -122,7 +122,7 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Pointer-orbit while focused** | `FLIGHT.orbitAzimuth`, `FLIGHT.orbitElevation` |
 | **Planets** (size, orbit, colour, atmosphere, rings, copy) | `config/planets.ts` |
 | **Sun** (size, colours, brightness) | `SUN` in `config/planets.ts` |
-| **Galaxy brightness** | `GALAXY.brightness` — per-particle colour multiplier (currently 0.32) |
+| **Galaxy brightness** | `GALAXY.brightness` — per-particle colour multiplier (currently 0.28) |
 | **Galaxy** (particle count, arms, winding, gradient, size) | `GALAXY` in `config/scene.ts` |
 | **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
 | **Galaxy rotation** (overall + core/rim differential) | `GALAXY.rotationSpeed`, `GALAXY.coreSpin`, `GALAXY.rimSpin` |
@@ -144,7 +144,7 @@ and `POSTFX.bloom.intensity` first.
 ## Art direction baked in
 
 - Near-black `#05060A` void with indigo/violet nebula tones and cyan/magenta/amber glows.
-- **Sun-primary lighting** — planet night sides are near-black (`ambient 0.04`); the terminator and rim glow are the only other light.
+- **Sun-primary lighting** — planet night sides are near-black (`ambient 0.04`); the terminator and rim glow are the only other light. Corona shell is kept tight (`radius × 1.15`, sharp fresnel falloff) so the sun reads as a point source rather than a wash.
 - Stars and galaxy are kept dim so bright objects (sun, planet-lit hemispheres) read clearly; bloom only fires on genuinely bright surfaces.
 - Slow, weighty, zero-G motion (no snap, no bounce). Floaty pointer parallax.
 - Film grain + vignette over the whole frame for a cinematic, non-clinical read.
