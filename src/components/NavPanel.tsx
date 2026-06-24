@@ -44,7 +44,7 @@ const SOLAR_IDX = 2
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'hero',        label: 'Departure',        numeral: 'I',   scrollTarget: 0,                  progress: 0 },
-  { id: 'solar',       label: 'Solar System',      numeral: 'II',  scrollTarget: solarStart,         progress: heroEnd },
+  { id: 'solar',       label: 'Solar System',      numeral: 'II',  scrollTarget: (heroEnd + solarStart) / 3, progress: heroEnd },
   // Solar sub-items — active state driven by solarStore, not scroll progress.
   { id: 'sun',         label: 'The Sun',                           scrollTarget: SOLAR_SNAPS_NAV[0], sub: true },
   ...PLANETS.map((p, i) => ({
@@ -54,7 +54,7 @@ const NAV_ITEMS: NavItem[] = [
     sub: true,
   })),
   { id: 'galaxy',      label: 'The Galaxy',        numeral: 'III', scrollTarget: GALAXY_SNAP,        progress: galaxyStart },
-  { id: 'singularity', label: 'The Singularity',   numeral: 'IV',  scrollTarget: SINGULARITY_SNAP,   progress: SINGULARITY_SNAP },
+  { id: 'singularity', label: 'The Singularity',   numeral: 'IV',  scrollTarget: SINGULARITY_SNAP,   progress: singularityStart },
   { id: 'vistas',      label: 'Deep-Space Vistas', numeral: 'V',   scrollTarget: VISTAS_SNAP,        progress: vistasStart },
   { id: 'return',      label: 'Return',             numeral: 'VI',  scrollTarget: RETURN_SNAP,        progress: outerStart },
 ]
@@ -89,7 +89,7 @@ export default function NavPanel({
         ai = 0
         for (let i = 0; i < NAV_ITEMS.length; i++) {
           const item = NAV_ITEMS[i]
-          if (!item.sub && item.progress !== undefined && item.progress <= p) ai = i
+          if (!item.sub && item.progress !== undefined && item.progress <= p + 0.002) ai = i
         }
       }
 
