@@ -70,6 +70,9 @@ export interface PlanetConfig {
   ring: RingConfig | null
   /** Info-card copy. */
   card: { stat: string; line: string }
+  /** Optional equirectangular texture, relative to /textures/planets/. When
+      present, the surface shader samples this instead of the procedural fbm. */
+  map?: string
 }
 
 export const SUN = {
@@ -104,6 +107,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: null,
     ring: null,
     card: { stat: '4,879 km across', line: 'Scorched and airless, nearest the fire.' },
+    map: 'mercury.jpg',
   },
   {
     key: 'venus',
@@ -128,6 +132,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: { opacity: 0.85, speed: 0.018 },
     ring: null,
     card: { stat: '12,104 km across', line: 'A furnace sealed in endless cloud.' },
+    map: 'venus.jpg',
   },
   {
     key: 'earth',
@@ -147,11 +152,12 @@ export const PLANETS: PlanetConfig[] = [
     oceanColor: '#16467e',
     oceanLevel: 0.52,
     nightColor: '#ffca6e',
-    night: 0.9,
+    night: 0.5,
     atmosphere: { color: '#6db3ff', intensity: 1.1, power: 3.2 },
     clouds: { opacity: 0.6, speed: 0.02 },
     ring: null,
     card: { stat: '12,742 km across', line: 'The pale blue dot — everyone you love, here.' },
+    map: 'earth.jpg',
   },
   {
     key: 'mars',
@@ -176,6 +182,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: null,
     ring: null,
     card: { stat: '6,779 km across', line: 'Rust and silence; a world that almost was.' },
+    map: 'mars.jpg',
   },
   {
     key: 'jupiter',
@@ -200,6 +207,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: { opacity: 0.35, speed: 0.05 },
     ring: null,
     card: { stat: '139,820 km across', line: 'A storm older than every human story.' },
+    map: 'jupiter.jpg',
   },
   {
     key: 'saturn',
@@ -224,6 +232,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: null,
     ring: { inner: 1.35, outer: 2.45, color: '#d9c8a0', opacity: 0.85, tilt: 0.47 },
     card: { stat: '116,460 km across', line: 'Crowned in ice and shattered moonlight.' },
+    map: 'saturn.jpg',
   },
   {
     key: 'uranus',
@@ -248,6 +257,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: null,
     ring: { inner: 1.4, outer: 1.9, color: '#9fd6dd', opacity: 0.35, tilt: 1.71 },
     card: { stat: '50,724 km across', line: 'Tipped on its side, rolling through the dark.' },
+    map: 'uranus.jpg',
   },
   {
     key: 'neptune',
@@ -272,6 +282,7 @@ export const PLANETS: PlanetConfig[] = [
     clouds: { opacity: 0.3, speed: 0.04 },
     ring: null,
     card: { stat: '49,244 km across', line: 'The last lantern before the long night.' },
+    map: 'neptune.jpg',
   },
 ]
 

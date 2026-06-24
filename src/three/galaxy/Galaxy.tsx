@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Billboard } from '@react-three/drei'
-import { GALAXY, MAX_PIXEL_RATIO } from '../../config/scene'
+import { GALAXY, ACTS, MAX_PIXEL_RATIO } from '../../config/scene'
+import { flight } from '../../lib/flight'
 import { galaxyVertex, galaxyFragment } from '../shaders/galaxy.glsl'
 import { haloVertex, haloFragment } from '../shaders/sun.glsl'
 
@@ -21,6 +22,7 @@ interface GalaxyProps {
  * to fill the frame with it during the galaxy act (see CameraRig).
  */
 export default function Galaxy({ count = GALAXY.count }: GalaxyProps) {
+  const groupRef = useRef<THREE.Group>(null)
   const matRef = useRef<THREE.ShaderMaterial>(null)
 
   const { geometry, uniforms } = useMemo(() => {
@@ -109,11 +111,14 @@ export default function Galaxy({ count = GALAXY.count }: GalaxyProps) {
   useEffect(() => () => geometry.dispose(), [geometry])
 
   useFrame((_, delta) => {
+    const visible = flight.scroll >= ACTS.galaxyStart - 0.05
+    if (groupRef.current) groupRef.current.visible = visible
+    if (!visible) return
     if (matRef.current) matRef.current.uniforms.uTime.value += delta
   })
 
   return (
-    <group position={GALAXY.position} rotation={[GALAXY.tilt, 0, 0]}>
+    <group ref={groupRef} position={GALAXY.position} rotation={[GALAXY.tilt, 0, 0]}>
       <points geometry={geometry} frustumCulled={false}>
         <shaderMaterial
           ref={matRef}

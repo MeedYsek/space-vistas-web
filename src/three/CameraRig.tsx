@@ -84,7 +84,8 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
     const seg = clamp(localP, 0, 1) * N
     const i = Math.min(Math.floor(seg), N - 1)
     const f = seg - i
-    const t = smoothstep(f, 0.4, 1.0) // dwell on a planet, then move to the next
+    // dwell on a planet for the first solarDwellFrac of the segment, then ease to the next
+    const t = smoothstep(f, ACTS.solarDwellFrac, 1.0)
 
     stopPos(i, v.a)
     stopPos(i + 1, v.b)
@@ -125,13 +126,25 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
       v.solarLook.lerpVectors(v.a, v.b, t)
     }
 
+    // When two planets are nearly antipodal (dot < -0.9) the Y-lift applied to
+    // v.outward/v.tangent means the slerp endpoints no longer equal v.a and v.b.
+    // Clamp to exact planet positions at the dwell boundaries so the camera
+    // always centres the focused planet (t≈0 → stop i, t≈1 → stop i+1).
+    if (t < 1e-6) v.solarLook.copy(v.a)
+    else if (t > 1 - 1e-6) v.solarLook.copy(v.b)
+
     const r = lerp(stopRadius(i), stopRadius(i + 1), t)
 
     // outward = sun → planet direction. The camera must sit on the SUN side of
     // the planet (i.e. offset toward -outward) so it looks at the lit hemisphere,
     // not the dark night side.
     v.outward.copy(v.solarLook).sub(sunPosition)
-    if (v.outward.lengthSq() < 1e-4) v.outward.set(0.4, 0.3, 1)
+    // When looking directly at the Sun (distance ≈ 0), choose a fallback
+    // direction that keeps the camera on the SAME z-side as the hero pose
+    // (z > 0). The original (0.4, 0.3, 1) put the camera at z ≈ -22, requiring
+    // a ~172° rotation from the hero; (-0.857, 0, -0.515) places it at
+    // (0, 11.7, 27.4), only ~21° from the hero — a smooth cinematic zoom-in.
+    if (v.outward.lengthSq() < 1e-4) v.outward.set(-0.857, 0, -0.515)
     v.outward.normalize()
     v.tangent.crossVectors(v.up, v.outward).normalize()
 
@@ -225,7 +238,10 @@ export default function CameraRig({ ignited, reducedMotion }: CameraRigProps) {
 
     // Act weights (crossfade): hero → solar → galaxy → singularity → vistas → outer/return.
     const enterSolar       = smoothstep(s, ACTS.heroEnd,          ACTS.solarStart)
-    const enterGalaxy      = smoothstep(s, ACTS.solarEnd,         ACTS.galaxyStart)
+    // Pure-Neptune zone: solarEnd (0.44) → midpoint (0.48) = 60 vh of dwell before
+    // the galaxy crossfade begins. Blend ends at galaxyStart (0.52) so the galaxy
+    // text and the galaxy camera arrive together, matching the DOM section timing.
+    const enterGalaxy      = smoothstep(s, (ACTS.solarEnd + ACTS.galaxyStart) * 0.5, ACTS.galaxyStart)
     const enterSingularity = smoothstep(s, ACTS.galaxyEnd,        ACTS.singularityStart)
     const enterVistas      = smoothstep(s, ACTS.singularityEnd,   ACTS.vistasStart)
     const enterOuter       = smoothstep(s, ACTS.vistasEnd,        ACTS.outerStart)

@@ -40,6 +40,7 @@ interface PlaneData {
  */
 export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
   const camera = useThree((s) => s.camera)
+  const groupRef = useRef<THREE.Group>(null)
   const matRefs = useRef<(THREE.ShaderMaterial | null)[]>([])
   const reveals = useRef<number[]>(VISTAS_CONTENT.map(() => 0))
   const backdropRef = useRef<THREE.ShaderMaterial>(null)
@@ -101,6 +102,10 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
   )
 
   useFrame((_, delta) => {
+    const visible = flight.scroll >= ACTS.vistasStart - 0.05
+    if (groupRef.current) groupRef.current.visible = visible
+    if (!visible) return
+
     const camX = camera.position.x
     // Fade the whole gallery out as the return act begins so the journey can
     // collapse to a clean point of light.
@@ -137,7 +142,7 @@ export default function Vistas({ lowPower = false }: { lowPower?: boolean }) {
   })
 
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Faint additive backdrop that tints toward the centred vista. */}
       <mesh position={[0, 0, VISTAS.z - 90]}>
         <planeGeometry args={[VISTAS.spreadX * 3.2, 420]} />

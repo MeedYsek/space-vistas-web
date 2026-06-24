@@ -57,7 +57,7 @@ export default function Overlay({
         id="solar-system"
         aria-label="The Solar System"
         className="relative min-h-screen"
-        style={tall('520vh')}
+        style={tall('680vh')}
       >
         <div className="flex min-h-screen items-center px-6 md:px-16">
           <div className="max-w-xl">
@@ -89,7 +89,7 @@ export default function Overlay({
         id="galaxy"
         aria-label="The Galaxy"
         className="relative min-h-screen"
-        style={tall('250vh')}
+        style={tall('150vh')}
       >
         <div className="flex min-h-screen items-center px-6 md:px-16">
           <div className="max-w-xl">
@@ -114,7 +114,7 @@ export default function Overlay({
         id="singularity"
         aria-label="The Singularity"
         className="relative min-h-screen"
-        style={tall('200vh')}
+        style={tall('180vh')}
       >
         <div className="flex min-h-screen items-center px-6 md:px-16">
           <div className="max-w-xl">
@@ -140,7 +140,7 @@ export default function Overlay({
         id="vistas"
         aria-label="Deep-Space Vistas"
         className="relative min-h-screen"
-        style={tall('300vh')}
+        style={tall('240vh')}
       >
         <div className="flex min-h-screen items-center">
           <VistasSection reducedMotion={reducedMotion} />
@@ -161,7 +161,7 @@ export default function Overlay({
         id="return"
         aria-label="Return"
         className="relative flex min-h-screen flex-col justify-between"
-        style={tall('160vh')}
+        style={tall('150vh')}
       >
         <div className="flex flex-1 items-center px-6 md:px-16">
           <div className="max-w-xl">

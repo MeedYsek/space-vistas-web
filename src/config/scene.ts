@@ -122,8 +122,8 @@ export const GALAXY = {
 export const SINGULARITY = {
   /** Event horizon radius (world units). */
   radius: 8,
-  /** World position — placed well behind the galaxy (z = -900). */
-  position: [0, -15, -900] as [number, number, number],
+  /** World position — placed just beyond the galaxy's far edge (z = -720, was -900). */
+  position: [0, -15, -720] as [number, number, number],
   /** Accretion disk inner edge as multiple of radius. */
   diskInnerMul: 2.25,
   /** Accretion disk outer edge as multiple of radius. */
@@ -263,15 +263,22 @@ export const FLIGHT = {
  */
 export const ACTS = {
   heroEnd: 0.06,
-  solarStart: 0.08,
-  solarEnd: 0.40,
-  galaxyStart: 0.42,
-  galaxyEnd: 0.56,
-  singularityStart: 0.60,  // crossfade from galaxy end
+  solarStart: 0.16,  // wider hero→solar crossfade (150 vh) so the approach to the Sun is a slow cinematic zoom
+  solarEnd: 0.44,    // pushed later so Neptune has a full pure-dwell zone
+  galaxyStart: 0.52, // camera orbit begins here; galaxy blends in from solarEnd
+  galaxyEnd: 0.60,   // was 0.56 — keeps the galaxy arc at ~60 vh after galaxyStart
+  singularityStart: 0.62, // was 0.60 — tightens gap to match galaxyEnd shift
   singularityEnd: 0.72,
   vistasStart: 0.74,
   vistasEnd: 0.88,
   outerStart: 0.90,
+  /**
+   * Fraction of each planet segment spent dwelling before the camera starts
+   * transitioning to the next body. Higher = stickier / more scroll required.
+   * Must stay in sync with CameraRig (smoothstep dwell arg) and useSmoothScroll
+   * (snap midpoint calculation). Valid range: 0..1, keep well below 1.
+   */
+  solarDwellFrac: 0.55,
 }
 
 /* ── Preloader ─────────────────────────────────────────────────────────────── */
@@ -284,11 +291,18 @@ export const PRELOADER = {
 /* ── Post-processing ───────────────────────────────────────────────────────── */
 export const POSTFX = {
   bloom: {
-    intensity: 0.62,
-    luminanceThreshold: 0.38,
+    /** Overall bloom multiplier — desktop. Mobile uses MOBILE.bloomIntensity. */
+    intensity: 0.44,
+    /**
+     * Only pixels brighter than this contribute to bloom.
+     * 0.38 was too permissive (nebula, dim stars, all bloomed); 0.52 limits
+     * it to genuinely bright surfaces (sun, lit hemispheres, galaxy core).
+     */
+    luminanceThreshold: 0.52,
     luminanceSmoothing: 0.75,
     mipmapBlur: true,
-    radius: 0.7,
+    /** Halo spread radius. Smaller = tighter, more precise halos. */
+    radius: 0.55,
   },
   chromaticAberration: {
     offset: 0.0012,
@@ -305,11 +319,20 @@ export const POSTFX = {
 /* ── Scroll pacing (used heavily from Milestone 2 onward) ──────────────────── */
 export const SCROLL = {
   /** Lenis smoothing — higher lerp = snappier, lower = floatier. */
-  lerp: 0.08,
+  lerp: 0.06,
   /** Multiplies wheel delta. <1 makes the long cosmic scroll feel weighty. */
-  wheelMultiplier: 0.9,
+  wheelMultiplier: 0.85,
   /** Total scroll length of the experience, in viewport heights. */
   pageHeightVH: 750,
+  /**
+   * Scroll-to-snap: after the user stops scrolling inside the solar-system or
+   * singularity acts, the scroll eases to the nearest body's dwell centre.
+   * Set snapDelay to 0 to disable snapping.
+   */
+  /** Idle time (ms) before a snap fires. */
+  snapDelay: 180,
+  /** Duration of the snap animation (seconds). */
+  snapDuration: 0.9,
 }
 
 /* ── Mobile overrides (merged over the above on small / low-power devices) ──── */

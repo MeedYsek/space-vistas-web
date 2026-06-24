@@ -40,7 +40,6 @@ interface DustLayerProps {
 
 function DustLayer({ count, depth, parallax, color, spread, opacity }: DustLayerProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const matRef = useRef<THREE.ShaderMaterial>(null)
 
   const { geometry, uniforms } = useMemo(() => {
     const positions = new Float32Array(count * 3)
@@ -77,7 +76,6 @@ function DustLayer({ count, depth, parallax, color, spread, opacity }: DustLayer
     <group ref={groupRef}>
       <points geometry={geometry} frustumCulled={false}>
         <shaderMaterial
-          ref={matRef}
           vertexShader={dustVertex}
           fragmentShader={dustFragment}
           uniforms={uniforms}

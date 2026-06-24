@@ -1,4 +1,5 @@
-import { useMemo, type ReactElement } from 'react'
+import { useMemo } from 'react'
+import type { ReactElement } from 'react'
 import * as THREE from 'three'
 import {
   EffectComposer,
@@ -38,19 +39,6 @@ export default function PostFX({
     [],
   )
 
-  const caEffect = (enableChromaticAberration ? (
-    <ChromaticAberration
-      offset={caOffset}
-      blendFunction={BlendFunction.NORMAL}
-      radialModulation={false}
-      modulationOffset={0}
-    />
-  ) : null) as ReactElement
-
-  const grainEffect = (enableGrain ? (
-    <Noise opacity={POSTFX.filmGrain.opacity} blendFunction={BlendFunction.OVERLAY} />
-  ) : null) as ReactElement
-
   return (
     <EffectComposer multisampling={0}>
       <Bloom
@@ -59,9 +47,18 @@ export default function PostFX({
         luminanceSmoothing={POSTFX.bloom.luminanceSmoothing}
         mipmapBlur={POSTFX.bloom.mipmapBlur}
       />
-      {caEffect}
+      {(enableChromaticAberration ? (
+        <ChromaticAberration
+          offset={caOffset}
+          blendFunction={BlendFunction.NORMAL}
+          radialModulation={false}
+          modulationOffset={0}
+        />
+      ) : null) as ReactElement}
       <Vignette offset={POSTFX.vignette.offset} darkness={POSTFX.vignette.darkness} />
-      {grainEffect}
+      {(enableGrain ? (
+        <Noise opacity={POSTFX.filmGrain.opacity} blendFunction={BlendFunction.OVERLAY} />
+      ) : null) as ReactElement}
     </EffectComposer>
   )
 }

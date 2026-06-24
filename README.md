@@ -5,6 +5,14 @@ nebulae, a solar-system orrery, a particle galaxy, a black-hole singularity and
 deep-space vistas. Built with React + Vite + TypeScript, Three.js via React
 Three Fiber, GSAP + Lenis smooth scrolling.
 
+Scroll feel: a cinematic, weighted inertia (`lerp 0.06`, `wheelMultiplier 0.85`).
+Inside the **Solar System** and **Singularity** acts the scroll snaps to the
+nearest body's dwell centre after ~180 ms of idle — so each planet and the black
+hole get a moment to breathe. After the Neptune snap there is a deliberate ~60 vh
+pure-Neptune zone before the galaxy crossfade begins; both the galaxy camera and
+the galaxy section text then arrive together at the same scroll position.
+Disable or tune snapping in `SCROLL.snapDelay/snapDuration`.
+
 ---
 
 ## Run it
@@ -41,7 +49,7 @@ src/
     vistas.ts              ← gallery content: titles, kickers, captions, palettes, procedural kind, src + credit for real photos
   App.tsx                  ← device profile, smooth scroll, ignite flag, canvas + overlay + cursor
   lib/
-    useSmoothScroll.ts      ← Lenis ↔ GSAP ticker ↔ ScrollTrigger (single clock) + scroll lock
+    useSmoothScroll.ts      ← Lenis ↔ GSAP ticker ↔ ScrollTrigger (single clock) + scroll lock + planet/singularity snap
     pointer.ts              ← shared mouse/gyro parallax store
     flight.ts               ← shared camera-flight state (scroll progress, warp, intro)
     solarStore.ts           ← which body is focused (drives the info-cards)
@@ -59,6 +67,7 @@ src/
     AmbientAudio.tsx        ← optional Web-Audio drone toggle (off by default)
     Cursor.tsx              ← glowing custom cursor + trailing ring
     Reveal.tsx              ← per-word blur-in type reveal (IntersectionObserver)
+    ScrollToTop.tsx         ← fixed back-to-top button with cosmic styling (shows after 20 % scroll)
     StaticFallback.tsx      ← no-WebGL CSS background
   three/
     CameraRig.tsx           ← camera director: hero/solar/galaxy/singularity/vistas/return acts + planet focus
@@ -129,6 +138,7 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Chromatic aberration** | `POSTFX.chromaticAberration.offset` |
 | **Vignette / film grain** | `POSTFX.vignette.*`, `POSTFX.filmGrain.opacity` |
 | **Scroll pacing** | `SCROLL.lerp`, `SCROLL.wheelMultiplier`, `SCROLL.pageHeightVH` |
+| **Scroll-to-snap** (planet / singularity dwell) | `SCROLL.snapDelay` (ms idle, 0 = off), `SCROLL.snapDuration` (seconds) |
 | **Mobile overrides** | `MOBILE.*` |
 
 Tip: to dial in performance vs. beauty, lower `STARFIELD.count`, `NEBULA.layers`
@@ -141,7 +151,9 @@ and `POSTFX.bloom.intensity` first.
 - Near-black `#05060A` void with indigo/violet nebula tones and cyan/magenta/amber glows.
 - **Sun-primary lighting** — planet night sides are near-black (`ambient 0.04`); the terminator and rim glow are the only other light. Corona shell is kept tight (`radius × 1.15`, sharp fresnel falloff) so the sun reads as a point source rather than a wash.
 - Stars and galaxy are kept dim so bright objects (sun, planet-lit hemispheres) read clearly; bloom only fires on genuinely bright surfaces.
-- Slow, weighty, zero-G motion (no snap, no bounce). Floaty pointer parallax.
+- **Cinematic hero → solar transition** — the hero's wide-angle shot (camera at z = 150) approaches the Sun from the same direction via a 150 vh crossfade, a slow zoom-in rather than an angular cut. The camera reaches the tight Sun framing (~21° of rotation total) and then continues to each planet in order.
+- Slow, weighty, zero-G motion. Floaty pointer parallax. Scroll-to-snap on each planet and the singularity — the page eases to each body's dwell centre after a brief pause, so nothing important is skimmed past.
+- **Scene objects hidden outside their acts** — the galaxy (120k additive particles) and the vistas gallery plates are invisible until the camera actually flies through them. This keeps the hero and solar sections free of stray blue/cyan light. The singularity sits just beyond the galaxy's far edge (z = −720) so the two feel connected rather than isolated.
 - Film grain + vignette over the whole frame for a cinematic, non-clinical read.
 
 ---
@@ -189,11 +201,12 @@ then add `src: 'filename.jpg'` and `credit: '…'` to the matching entry in
 (cover-fit UV, aspect-ratio corrected); cards and the lightbox both show the
 real photo.
 
-**The planets are fully procedural (shader noise), not textured.** To use real
-maps later, add a `map` URL to a planet in `config/planets.ts`, load it with
-drei's `useTexture`, and sample it in `planet.glsl.ts` in place of the
-`fbm(...)` surface term. NASA's planetary maps (e.g. the Blue Marble / SVS
-texture sets) are public domain.
+**All eight planets use real texture maps** (NASA / Solar System Scope, bundled in
+`public/textures/planets/`). Earth's Blue Marble (public domain), Mars, Jupiter,
+Saturn, Uranus and Neptune (Solar System Scope CC BY 4.0) load asynchronously —
+each planet shows procedural noise until its JPEG arrives, then swaps silently.
+To add or swap a map: drop a JPEG into `public/textures/planets/`, then add
+`map: 'filename.jpg'` to the matching planet in `config/planets.ts`.
 
 > ⚠️ ESO images are CC BY 4.0 (attribution required). Always check the specific
 > image's licence page before shipping non-NASA material.
@@ -202,7 +215,7 @@ texture sets) are public domain.
 
 ## Verification — project complete
 
-**Verdict:** PASS · **Date:** 2026-06-23 · **Node:** v20.20.2 / Vite 6 /
+**Verdict:** PASS · **Date:** 2026-06-24 · **Node:** v20.20.2 / Vite 6 /
 Playwright headless Chromium · `tsc --noEmit` and `vite build` both clean.
 
 Verified via Playwright (headless Chromium runs `requestAnimationFrame`, unlike a
@@ -212,16 +225,19 @@ backgrounded preview tab) with real wheel-scrolling end-to-end:
    hero resolving from blur, no hard cut.
 2. **Solar act** — real scroll frames each planet at its dwell centre with the
    matching info-card (e.g. Earth → "the pale blue dot"); Saturn's rings, the
-   galaxy foreshadowed in the distance.
+   galaxy foreshadowed in the distance. **Scroll-to-snap** eases to each planet's
+   centre (~180 ms idle trigger, 0.9 s cubic ease-out).
 3. **Galaxy act** — the 120k-point spiral arcs from a high 3/4 view down to a
    dramatic angle; warm core, cool arms, differential spin.
-4. **Vistas act** — procedural plates resolve via the noise wipe as the camera
+4. **Singularity act** — the ray-marched black hole fills the frame; **snap** locks
+   to its midpoint so the accretion disk and jets have time to read.
+5. **Vistas act** — procedural plates resolve via the noise wipe as the camera
    pans; DOM gallery cards open full-screen with the GSAP FLIP lightbox.
-5. **Return** — the gallery fades and the journey collapses to a distant point of
+6. **Return** — the gallery fades and the journey collapses to a distant point of
    light; the floating footer (newsletter, socials, ambient-drone toggle) reads
    over a scrim.
-6. **Custom cursor**, magnetic CTA, and per-word type reveals all fire.
-7. **Mobile** (390×844, touch) renders the full light path; **reduced-motion**
+7. **Custom cursor**, magnetic CTA, and per-word type reveals all fire.
+8. **Mobile** (390×844, touch) renders the full light path; **reduced-motion**
    pins the camera and drops the heavy scenes (35 meshes → 5) with the page
    collapsed to compact sections; **no console/page errors** in any run.
 

@@ -42,6 +42,8 @@ export const planetFragment = /* glsl */ `
   uniform float uOceanLevel;
   uniform vec3 uNightColor;
   uniform float uNight;
+  uniform sampler2D uMap;
+  uniform float uUseMap;
 
   ${noiseGLSL}
 
@@ -49,25 +51,36 @@ export const planetFragment = /* glsl */ `
     vec3 N = normalize(vWorldNormal);
     vec3 L = normalize(uSunDir);
     float ndl = dot(N, L);
-    float day = smoothstep(-0.08, 0.22, ndl); // soft terminator
+    float day = smoothstep(-0.08, 0.22, ndl);
 
-    // Procedural surface, sampled in object space so detail is radius-independent
-    // and fixed to the planet (rotates with spin, doesn't crawl as it orbits).
-    vec3 dir = normalize(vObjPos);
-    vec3 sp = dir * (3.0 + uFreq * 3.0);
-    float n = fbm(sp + uSeed, 5);
-    float nn = n * 0.5 + 0.5;
+    vec3 surf;
+    float ocean = 0.0;
+    float nn = 0.5;
 
-    // Latitude banding (gas giants).
-    float bands = 0.5 + 0.5 * sin(dir.y * 16.0 + n * 3.0);
-    vec3 surf = mix(uColorA, uColorB, nn);
-    surf = mix(surf, mix(uColorA, uColorB, bands), uBands);
+    if (uUseMap > 0.5) {
+      // Real texture map — sampled via equirectangular sphere UVs (U=longitude,
+      // V=latitude). The texture spins with the planet mesh because UVs are in
+      // object space. sRGB values come through as-is in this linear shader, which
+      // gives a slightly gamma-lifted look that reads well under the dark ambient.
+      surf = texture2D(uMap, vUv).rgb;
+    } else {
+      // Procedural surface — fbm in object space so detail sticks to the spin.
+      vec3 dir = normalize(vObjPos);
+      vec3 sp = dir * (3.0 + uFreq * 3.0);
+      float n = fbm(sp + uSeed, 5);
+      nn = n * 0.5 + 0.5;
 
-    // Ocean.
-    float ocean = step(nn, uOceanLevel) * uOcean;
-    surf = mix(surf, uOceanColor, ocean);
+      // Latitude banding (gas giants).
+      float bands = 0.5 + 0.5 * sin(dir.y * 16.0 + n * 3.0);
+      surf = mix(uColorA, uColorB, nn);
+      surf = mix(surf, mix(uColorA, uColorB, bands), uBands);
 
-    // Specular glint on water.
+      // Ocean.
+      ocean = step(nn, uOceanLevel) * uOcean;
+      surf = mix(surf, uOceanColor, ocean);
+    }
+
+    // Specular glint on water (procedural ocean only; texture has its own water).
     vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 H = normalize(L + V);
     float spec = pow(max(dot(N, H), 0.0), 80.0) * ocean * day;

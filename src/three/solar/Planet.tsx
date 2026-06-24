@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { PlanetConfig } from '../../config/planets'
@@ -48,9 +48,26 @@ export default function Planet({ config, index }: PlanetProps) {
       uOceanLevel: { value: config.oceanLevel },
       uNightColor: { value: new THREE.Color(config.nightColor) },
       uNight: { value: config.night },
+      uMap: { value: null as THREE.Texture | null },
+      uUseMap: { value: 0.0 },
     }),
     [config, index],
   )
+
+  // Load the planet texture asynchronously; updates the live uniform imperatively
+  // so there's no flash — the planet shows procedurally until the texture arrives.
+  useEffect(() => {
+    if (!config.map) return
+    const loader = new THREE.TextureLoader()
+    loader.load(
+      `/textures/planets/${config.map}`,
+      (tex) => {
+        if (!surfMat.current) return
+        surfMat.current.uniforms.uMap.value = tex
+        surfMat.current.uniforms.uUseMap.value = 1.0
+      },
+    )
+  }, [config.map])
 
   const atmoUniforms = useMemo(() => {
     if (!config.atmosphere) return null

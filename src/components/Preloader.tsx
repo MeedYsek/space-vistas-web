@@ -16,21 +16,35 @@ const CIRC = 2 * Math.PI * R
  * (via onComplete) and fades itself out over the top of the camera push — so
  * there's no hard cut, the void simply resolves into the starfield.
  *
- * With no heavy assets yet, the count is paced to PRELOADER.minDuration; real
- * asset progress will take over here in later milestones.
+ * The ring is driven directly via a DOM ref in GSAP's onUpdate callback so it
+ * updates at the full 60 fps tick rate. Using React state alone would cause the
+ * dashoffset to jump because React batches setPct calls and only re-renders a
+ * handful of times per second, skipping most intermediate frames.
  */
 export default function Preloader({ onComplete }: PreloaderProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const circleRef = useRef<SVGCircleElement>(null)
   const [pct, setPct] = useState(0)
   const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
+    // Set initial dashoffset imperatively so it's hidden before the tween starts.
+    circleRef.current?.setAttribute('stroke-dashoffset', String(CIRC))
+
     const counter = { v: 0 }
     const tween = gsap.to(counter, {
       v: 100,
       duration: PRELOADER.minDuration,
       ease: 'power1.inOut',
-      onUpdate: () => setPct(Math.round(counter.v)),
+      onUpdate: () => {
+        // Text counter: React state is fine — batched updates look smooth on text.
+        setPct(Math.round(counter.v))
+        // Ring: bypass React and write the attribute directly every GSAP tick.
+        circleRef.current?.setAttribute(
+          'stroke-dashoffset',
+          String(CIRC * (1 - counter.v / 100)),
+        )
+      },
       onComplete: () => {
         onComplete() // ignite now; fade runs concurrently for a seamless handoff
         gsap.to(rootRef.current, {
@@ -48,8 +62,6 @@ export default function Preloader({ onComplete }: PreloaderProps) {
 
   if (hidden) return null
 
-  const offset = CIRC * (1 - pct / 100)
-
   return (
     <div
       ref={rootRef}
@@ -62,8 +74,9 @@ export default function Preloader({ onComplete }: PreloaderProps) {
         <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
           {/* Track */}
           <circle cx="70" cy="70" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-          {/* Progress */}
+          {/* Progress — dashoffset is written imperatively via circleRef, not via React prop */}
           <circle
+            ref={circleRef}
             cx="70"
             cy="70"
             r={R}
@@ -72,8 +85,6 @@ export default function Preloader({ onComplete }: PreloaderProps) {
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeDasharray={CIRC}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 0.1s linear' }}
           />
           <defs>
             <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">

@@ -33,7 +33,9 @@ function NebulaPlane({ cfg }: { cfg: PlaneConfig }) {
       uSeed: { value: cfg.seed },
       uOctaves: { value: NEBULA.octaves },
     }),
-    [cfg],
+    // cfg is a stable object from the parent's own useMemo — no need to re-run
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   )
 
   useFrame((_, delta) => {
