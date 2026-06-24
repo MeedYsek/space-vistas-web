@@ -18,11 +18,18 @@ export interface Atmosphere {
   color: string
   intensity: number
   power: number
+  /** When set, the atmosphere uses the forward-scattering shell (bright sunward
+      limb + golden terminator arc) instead of the uniform glow. Strength ≈ 0..1.5. */
+  forward?: number
 }
 
 export interface CloudLayer {
   opacity: number
   speed: number
+  /** Cloud tint (defaults to white). */
+  color?: string
+  /** 0..1, higher = a more complete cloud deck (defaults to ~0.25). */
+  coverage?: number
 }
 
 export interface RingConfig {
@@ -73,13 +80,56 @@ export interface PlanetConfig {
   /** Optional equirectangular texture, relative to /textures/planets/. When
       present, the surface shader samples this instead of the procedural fbm. */
   map?: string
+  /** Surface relief strength — perturbs the normal from the texture's luminance
+      so craters/ridges self-shade at the terminator. 0 (default) = flat. */
+  relief?: number
+  /** Terminator width: 0 = razor-sharp (airless), 1 (default) = soft scattering
+      edge for thick-atmosphere worlds. */
+  terminatorSoftness?: number
+  /** Warm atmospheric scatter band at the terminator. Defaults to off; tint
+      falls back to the atmosphere colour when a strength is set without a colour. */
+  scatter?: { color?: string; strength: number } | null
+  /** Veil the surface toward `hazeColor` for cloud-shrouded worlds (Venus). 0 = off. */
+  surfaceHaze?: number
+  hazeColor?: string
+  /** Tight sun glint on textured oceans (Earth). 0 = off. Mask is derived from
+      the texture's blueness, so land/ice/cloud stay matte. */
+  oceanGlint?: number
+  /** Faint cool aurora near the poles on the night side. Off when omitted. */
+  aurora?: { color: string; strength: number }
+}
+
+/**
+ * Shared lighting for all planets (grounded realism). Sun is a point source at
+ * the origin; night sides stay near-black with only a whisper of starlight so
+ * they read as spheres rather than holes.
+ */
+export const PLANET_LIGHT = {
+  sunColor: '#fff4ea',    // subtly warm white sunlight
+  nightAmbient: 0.04,     // flat fill so the night side isn't pure black
+  starlight: 0.07,        // faint starlight rim on the night limb
+  starTint: '#41506e',    // cool starlight / nebula reflection tint
 }
 
 export const SUN = {
   radius: 7,
-  colorDeep: '#b3360b',
-  colorHot: '#ffd27a',
+  colorDeep: '#b3360b',  // cool limb + intergranular lanes
+  colorHot: '#ffd27a',   // mid photosphere
+  colorCore: '#fff2e0',  // warm-white hottest core (G2V is ~white, kept warm)
   brightness: 1.4,
+  /** Fine granulation contrast — real granules are subtle, so keep this low. */
+  granuleContrast: 0.36,
+  /** Real limb darkening. 0 = flat disk, 1 = strong dim + redden toward the edge. */
+  limbDarkening: 0.55,
+  /** Sunspots — cool dark patches. amount 0 = none (default for a clean disk). */
+  sunspots: { amount: 0.0, darkness: 0.7 },
+  /** Corona shell — faint, tight, pearly. Kept tight per art direction (not a wash). */
+  coronaTint: '#ffe9cf',
+  coronaPower: 4.5,
+  coronaIntensity: 0.34,
+  /** Broad soft halo that feeds Bloom in the wide shot. */
+  haloColor: '#ffe3b0',
+  haloIntensity: 0.5,
   card: { name: 'The Sun', stat: '1,391,000 km', line: 'A cathedral lit by a single, patient flame.' },
 }
 
@@ -108,6 +158,9 @@ export const PLANETS: PlanetConfig[] = [
     ring: null,
     card: { stat: '4,879 km across', line: 'Scorched and airless, nearest the fire.' },
     map: 'mercury.jpg',
+    // Airless: razor-sharp terminator, strong crater relief, no scatter.
+    relief: 1.3,
+    terminatorSoftness: 0.05,
   },
   {
     key: 'venus',
@@ -128,11 +181,17 @@ export const PLANETS: PlanetConfig[] = [
     oceanLevel: 0,
     nightColor: '#000000',
     night: 0,
-    atmosphere: { color: '#ffd9a0', intensity: 1.0, power: 3.0 },
-    clouds: { opacity: 0.85, speed: 0.018 },
+    atmosphere: { color: '#ffdca6', intensity: 1.35, power: 2.4, forward: 1.3 },
+    clouds: { opacity: 0.7, speed: 0.012, color: '#efe2bf', coverage: 0.5 },
     ring: null,
     card: { stat: '12,104 km across', line: 'A furnace sealed in endless cloud.' },
     map: 'venus.jpg',
+    // Thick atmosphere: very soft terminator, warm scatter, surface only partly
+    // visible through a pale cream haze (it's perpetually cloud-shrouded).
+    terminatorSoftness: 1.4,
+    scatter: { color: '#ffdca6', strength: 0.5 },
+    surfaceHaze: 0.4,
+    hazeColor: '#d8c9a0',
   },
   {
     key: 'earth',
@@ -154,10 +213,13 @@ export const PLANETS: PlanetConfig[] = [
     nightColor: '#ffca6e',
     night: 0.5,
     atmosphere: { color: '#6db3ff', intensity: 1.1, power: 3.2 },
-    clouds: { opacity: 0.6, speed: 0.02 },
+    clouds: { opacity: 0.65, speed: 0.02, coverage: 0.32 },
     ring: null,
     card: { stat: '12,742 km across', line: 'The pale blue dot — everyone you love, here.' },
     map: 'earth.jpg',
+    // Blue marble: tight ocean sun-glint + a faint cool aurora at the poles.
+    oceanGlint: 1.4,
+    aurora: { color: '#6affc0', strength: 0.5 },
   },
   {
     key: 'mars',

@@ -1,10 +1,13 @@
 import { noiseGLSL } from './noise.glsl'
 
 /**
- * Sun surface: animated emissive plasma. Two fbm fields at different scales and
- * drift speeds give roiling granulation; bright spots are pushed with a power
- * curve so Bloom flares them. A view-based limb term brightens the edge into a
- * corona-ish halo. Rendered with no lighting (it IS the light).
+ * Sun surface: animated emissive plasma, grounded toward a real G2V star.
+ * Fine low-contrast granulation (two fbm fields) over a large-scale
+ * supergranulation modulation; a warm-white core cools through solar yellow to
+ * an orange limb. Physically-correct limb DARKENING dims and reddens the edge
+ * (the real cue), and optional sunspots add cool dark patches. The brightest
+ * granules get a gentle power push so Bloom can flare them. No lighting (it IS
+ * the light).
  */
 export const sunVertex = /* glsl */ `
   varying vec3 vPos;
@@ -26,25 +29,44 @@ export const sunFragment = /* glsl */ `
   varying vec3 vWorldNormal;
 
   uniform float uTime;
-  uniform vec3 uColorDeep;
-  uniform vec3 uColorHot;
+  uniform vec3 uColorDeep;     // cool limb + intergranular lanes
+  uniform vec3 uColorHot;      // mid photosphere
+  uniform vec3 uColorCore;     // warm-white hottest core
   uniform float uBrightness;
+  uniform float uLimbDarkening; // linear limb-darkening coefficient (0..1)
+  uniform float uGranuleContrast;
+  uniform float uSpots;        // sunspot amount (0 = none)
+  uniform float uSpotDark;     // how dark the spots get
 
   ${noiseGLSL}
 
   void main() {
     vec3 p = normalize(vPos) * 2.4;
-    float n = fbm(p * 1.4 + vec3(0.0, 0.0, uTime * 0.07), 6);
-    float n2 = fbm(p * 3.6 - vec3(uTime * 0.11), 4);
-    float plasma = (n * 0.6 + n2 * 0.4) * 0.5 + 0.5;
+    // Fine granulation — kept low-contrast, as real solar granules are subtle.
+    float n  = fbm(p * 1.4 + vec3(0.0, 0.0, uTime * 0.06), 6);
+    float n2 = fbm(p * 3.6 - vec3(uTime * 0.10), 4);
+    float gran = n * 0.6 + n2 * 0.4;
+    // Large-scale supergranulation gently varies brightness across the disk.
+    float superg = fbm(p * 0.6 + vec3(0.0, uTime * 0.02, 0.0), 3) * 0.5 + 0.5;
+    float plasma = clamp(0.5 + gran * uGranuleContrast, 0.0, 1.0);
+    plasma = mix(plasma, plasma * (0.7 + 0.6 * superg), 0.5);
 
-    vec3 col = mix(uColorDeep, uColorHot, smoothstep(0.25, 0.85, plasma));
-    col += pow(plasma, 4.0) * uColorHot * 1.6; // hot granules
-
-    // Limb brightening → reads as the inner corona, and Bloom finishes the flare.
     vec3 V = normalize(cameraPosition - vWorldPos);
-    float rim = pow(1.0 - max(dot(normalize(vWorldNormal), V), 0.0), 2.2);
-    col += rim * uColorHot * 0.9;
+    float mu = clamp(dot(normalize(vWorldNormal), V), 0.0, 1.0); // 1 centre → 0 limb
+
+    // Photosphere colour: lanes (deep) → mid → warm-white core (near the centre).
+    vec3 col = mix(uColorDeep, uColorHot, smoothstep(0.25, 0.8, plasma));
+    col = mix(col, uColorCore, smoothstep(0.6, 1.0, plasma) * smoothstep(0.45, 1.0, mu));
+    col += pow(plasma, 4.0) * uColorHot * 0.9; // subtle hot-granule push → Bloom
+
+    // Sunspots: cool, dark patches from a low-frequency field (off when uSpots = 0).
+    float spotField = fbm(p * 0.9 + vec3(11.0, 0.0, uTime * 0.015), 4) * 0.5 + 0.5;
+    float spot = smoothstep(0.62, 0.5, spotField) * uSpots;
+    col = mix(col, uColorDeep * (1.0 - uSpotDark), spot);
+
+    // Real limb darkening: dimmer AND redder toward the edge (linear law).
+    col = mix(col, uColorDeep, (1.0 - mu) * (1.0 - mu) * 0.35); // redden the limb
+    col *= 1.0 - uLimbDarkening * (1.0 - mu);                   // dim the limb
 
     gl_FragColor = vec4(col * uBrightness, 1.0);
   }

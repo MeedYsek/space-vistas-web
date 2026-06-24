@@ -130,6 +130,23 @@ export function useSmoothScroll(reducedMotion: boolean) {
 
     ScrollTrigger.refresh()
 
+    // Dev-only verification hook: lets headless Playwright jump to a scroll
+    // progress (0..1) and read live flight state. Stripped from production
+    // builds via the import.meta.env.DEV guard.
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __flight?: unknown }).__flight = {
+        get scroll() {
+          return flight.scroll
+        },
+        scrollToProgress(p: number, immediate = true) {
+          const totalH = document.documentElement.scrollHeight - window.innerHeight
+          const y = Math.round(Math.min(Math.max(p, 0), 1) * totalH)
+          if (instance) instance.scrollTo(y, { immediate, duration: immediate ? 0 : 0.6 })
+          else window.scrollTo(0, y)
+        },
+      }
+    }
+
     return () => {
       if (snapTimer) clearTimeout(snapTimer)
       progress.kill()

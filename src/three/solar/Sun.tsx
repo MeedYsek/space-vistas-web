@@ -25,16 +25,21 @@ export default function Sun() {
       uTime: { value: 0 },
       uColorDeep: { value: new THREE.Color(SUN.colorDeep) },
       uColorHot: { value: new THREE.Color(SUN.colorHot) },
+      uColorCore: { value: new THREE.Color(SUN.colorCore) },
       uBrightness: { value: SUN.brightness },
+      uLimbDarkening: { value: SUN.limbDarkening },
+      uGranuleContrast: { value: SUN.granuleContrast },
+      uSpots: { value: SUN.sunspots.amount },
+      uSpotDark: { value: SUN.sunspots.darkness },
     }),
     [],
   )
 
   const coronaUniforms = useMemo(
     () => ({
-      uColor: { value: new THREE.Color(SUN.colorHot) },
-      uPower: { value: 4.0 },
-      uIntensity: { value: 0.95 },
+      uColor: { value: new THREE.Color(SUN.coronaTint) },
+      uPower: { value: SUN.coronaPower },
+      uIntensity: { value: SUN.coronaIntensity },
       uSunDir: { value: new THREE.Vector3(0, 0, 1) },
       uLitMix: { value: 0 },
     }),
@@ -43,8 +48,8 @@ export default function Sun() {
 
   const haloUniforms = useMemo(
     () => ({
-      uColor: { value: new THREE.Color('#ffb15a') },
-      uIntensity: { value: 0.52 },
+      uColor: { value: new THREE.Color(SUN.haloColor) },
+      uIntensity: { value: SUN.haloIntensity },
     }),
     [],
   )

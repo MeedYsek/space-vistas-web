@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { PlanetConfig } from '../../config/planets'
+import { PLANET_LIGHT } from '../../config/planets'
 import { planetPositions } from './planetRegistry'
 import { glowVertex, glowFragment } from '../shaders/sun.glsl'
 import {
   planetVertex,
   planetFragment,
   cloudsFragment,
+  atmosphereFragment,
   ringVertex,
   ringFragment,
 } from '../shaders/planet.glsl'
@@ -50,6 +52,22 @@ export default function Planet({ config, index }: PlanetProps) {
       uNight: { value: config.night },
       uMap: { value: null as THREE.Texture | null },
       uUseMap: { value: 0.0 },
+      // Grounded-realism lighting/relief.
+      uRelief: { value: config.relief ?? 0 },
+      uTermSoft: { value: config.terminatorSoftness ?? 1 },
+      uSunColor: { value: new THREE.Color(PLANET_LIGHT.sunColor) },
+      uNightLift: { value: PLANET_LIGHT.nightAmbient },
+      uStarlight: { value: PLANET_LIGHT.starlight },
+      uStarTint: { value: new THREE.Color(PLANET_LIGHT.starTint) },
+      uScatterColor: {
+        value: new THREE.Color(config.scatter?.color ?? config.atmosphere?.color ?? '#ffffff'),
+      },
+      uScatterStrength: { value: config.scatter?.strength ?? 0 },
+      uHaze: { value: config.surfaceHaze ?? 0 },
+      uHazeColor: { value: new THREE.Color(config.hazeColor ?? '#ffffff') },
+      uOceanGlint: { value: config.oceanGlint ?? 0 },
+      uAuroraColor: { value: new THREE.Color(config.aurora?.color ?? '#000000') },
+      uAuroraStrength: { value: config.aurora?.strength ?? 0 },
     }),
     [config, index],
   )
@@ -69,15 +87,21 @@ export default function Planet({ config, index }: PlanetProps) {
     )
   }, [config.map])
 
+  // Forward-scattering atmospheres (Venus today) use a dedicated shell; the rest
+  // keep the shared sun glow. Swap both shader + uniforms together.
+  const useForwardAtmo = config.atmosphere?.forward != null
+
   const atmoUniforms = useMemo(() => {
     if (!config.atmosphere) return null
-    return {
+    const base = {
       uColor: { value: new THREE.Color(config.atmosphere.color) },
       uPower: { value: config.atmosphere.power },
       uIntensity: { value: config.atmosphere.intensity },
       uSunDir: { value: sunDir.current },
-      uLitMix: { value: 1 },
     }
+    return config.atmosphere.forward != null
+      ? { ...base, uForward: { value: config.atmosphere.forward } }
+      : { ...base, uLitMix: { value: 1 } }
   }, [config])
 
   const cloudUniforms = useMemo(() => {
@@ -89,6 +113,8 @@ export default function Planet({ config, index }: PlanetProps) {
       uSpeed: { value: config.clouds.speed },
       uSeed: { value: index * 7.3 },
       uFreq: { value: config.surfaceFreq * 1.3 },
+      uColor: { value: new THREE.Color(config.clouds.color ?? '#ffffff') },
+      uCoverage: { value: config.clouds.coverage ?? 0.25 },
     }
   }, [config, index])
 
@@ -121,6 +147,7 @@ export default function Planet({ config, index }: PlanetProps) {
     }
 
     if (spinRef.current) spinRef.current.rotation.y += config.spin * delta
+    if (surfMat.current) surfMat.current.uniforms.uTime.value += delta
     if (cloudMat.current) cloudMat.current.uniforms.uTime.value += delta
     // surface/atmosphere/ring uniforms share the same sunDir Vector3 object
     // (mutated above), so the terminator + rim glow update with no reassignment.
@@ -135,7 +162,7 @@ export default function Planet({ config, index }: PlanetProps) {
           <shaderMaterial
             ref={atmoMat}
             vertexShader={glowVertex}
-            fragmentShader={glowFragment}
+            fragmentShader={useForwardAtmo ? atmosphereFragment : glowFragment}
             uniforms={atmoUniforms}
             transparent
             depthWrite={false}
