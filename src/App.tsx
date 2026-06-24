@@ -8,6 +8,7 @@ import Overlay from './components/Overlay'
 import Preloader from './components/Preloader'
 import Cursor from './components/Cursor'
 import ScrollToTop from './components/ScrollToTop'
+import NavPanel from './components/NavPanel'
 
 /**
  * App root.
@@ -69,6 +70,8 @@ export default function App() {
       {!profile.isMobile && <Cursor reducedMotion={reducedMotion} />}
 
       {profile.hasWebGL && <Preloader onComplete={handleIgnite} />}
+
+      <NavPanel ignited={ignited} isMobile={profile.isMobile} />
 
       <ScrollToTop reducedMotion={reducedMotion} />
     </>

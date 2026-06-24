@@ -47,8 +47,8 @@ export default function Overlay({
         </div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-center">
-          <p className="label text-white/40">Scroll to drift</p>
-          <div className="scroll-cue mx-auto mt-3 h-10 w-[1px] bg-gradient-to-b from-white/50 to-transparent" />
+          <p className="label text-glow-cyan/70">Scroll to drift</p>
+          <div className="scroll-cue mx-auto mt-3 h-10 w-[1px] bg-gradient-to-b from-glow-cyan/50 to-transparent" />
         </div>
       </section>
 

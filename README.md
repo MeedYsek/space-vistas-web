@@ -67,6 +67,7 @@ src/
     AmbientAudio.tsx        ← optional Web-Audio drone toggle (off by default)
     Cursor.tsx              ← glowing custom cursor + trailing ring
     Reveal.tsx              ← per-word blur-in type reveal (IntersectionObserver)
+    NavPanel.tsx            ← fixed right-side section navigator: auto-scrolls to active item, click to jump
     ScrollToTop.tsx         ← fixed back-to-top button with cosmic styling (shows after 20 % scroll)
     StaticFallback.tsx      ← no-WebGL CSS background
   three/
