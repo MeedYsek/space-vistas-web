@@ -291,6 +291,10 @@ export const PRELOADER = {
 /* ── Post-processing ───────────────────────────────────────────────────────── */
 export const POSTFX = {
   bloom: {
+    /** Master switch. Off for the grounded-realism look (real astrophotography
+        doesn't bloom) — also sidesteps the bloom-amplified bad-pixel flicker.
+        Set true to restore the stylized glow. */
+    enabled: false,
     /** Overall bloom multiplier — desktop. Mobile uses MOBILE.bloomIntensity. */
     intensity: 0.44,
     /**

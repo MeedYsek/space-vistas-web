@@ -72,7 +72,7 @@ export const vistaFragment = /* glsl */ `
       // Aurora: vertical curtains shimmering across x.
       float curtain = fbm(vec3(uv.x * 5.0, uv.y * 1.2 - t * 2.0, uSeed), uOctaves) * 0.5 + 0.5;
       float band = smoothstep(0.0, 0.5, uv.y) * smoothstep(1.0, 0.5, uv.y);
-      float ribbons = pow(curtain, 2.2) * band;
+      float ribbons = pow(max(curtain, 0.0), 2.2) * band; // max(): fbm can dip <0 → pow UB
       col = mix(uColorA, uColorB, ribbons);
       col += uColorC * pow(ribbons, 1.5) * 0.8;
     } else if (uKind == 3) {
@@ -98,9 +98,9 @@ export const vistaFragment = /* glsl */ `
       // Default nebula: layered fbm clouds.
       float n1 = fbm(vec3(p * 2.4, t), uOctaves) * 0.5 + 0.5;
       float n2 = fbm(vec3(p * 5.0 + 9.0, -t), uOctaves) * 0.5 + 0.5;
-      float cloud = pow(n1, 1.6);
+      float cloud = pow(max(n1, 0.0), 1.6); // max(): fbm can dip <0 → pow UB → NaN
       col = mix(uColorA, uColorB, cloud);
-      col += uColorC * pow(n2 * cloud, 2.0) * 1.3;
+      col += uColorC * pow(max(n2 * cloud, 0.0), 2.0) * 1.3;
     }
 
     // Stars over everything.

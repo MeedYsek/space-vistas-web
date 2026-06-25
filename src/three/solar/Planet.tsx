@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import type { PlanetConfig } from '../../config/planets'
 import { PLANET_LIGHT } from '../../config/planets'
 import { planetPositions } from './planetRegistry'
+import { DEBUG } from '../../lib/debug'
 import { glowVertex, glowFragment } from '../shaders/sun.glsl'
 import {
   planetVertex,
@@ -68,6 +69,22 @@ export default function Planet({ config, index }: PlanetProps) {
       uOceanGlint: { value: config.oceanGlint ?? 0 },
       uAuroraColor: { value: new THREE.Color(config.aurora?.color ?? '#000000') },
       uAuroraStrength: { value: config.aurora?.strength ?? 0 },
+      uBandFlow: { value: config.bandFlow ?? 0 },
+      uGRSPos: { value: new THREE.Vector2(...(config.redSpot?.pos ?? [0, 0])) },
+      uGRSSize: { value: new THREE.Vector2(...(config.redSpot?.size ?? [1, 1])) },
+      uGRSStrength: { value: config.redSpot?.strength ?? 0 },
+      uGRSSwirl: { value: config.redSpot?.swirl ?? 0 },
+      uGRSSpin: { value: config.redSpot?.spin ?? 0 },
+      // Ring shadow cast onto this planet (Saturn/Uranus). uRingCenter tracks the
+      // orbiting planet each frame; the ring normal is the (fixed) tilted axis.
+      uRingShadow: { value: config.ring ? 1 : 0 },
+      uRingInner: { value: (config.ring?.inner ?? 1) * config.radius },
+      uRingOuter: { value: (config.ring?.outer ?? 1) * config.radius },
+      uRingNormal: {
+        value: new THREE.Vector3(-Math.sin(config.tilt), Math.cos(config.tilt), 0),
+      },
+      uRingCenter: { value: new THREE.Vector3() },
+      uSaturation: { value: config.saturation ?? 1 },
     }),
     [config, index],
   )
@@ -123,9 +140,13 @@ export default function Planet({ config, index }: PlanetProps) {
     return {
       uInner: { value: config.ring.inner * config.radius },
       uOuter: { value: config.ring.outer * config.radius },
-      uColor: { value: new THREE.Color(config.ring.color) },
+      uColorInner: { value: new THREE.Color(config.ring.colorInner ?? config.ring.color) },
+      uColorOuter: { value: new THREE.Color(config.ring.colorOuter ?? config.ring.color) },
       uOpacity: { value: config.ring.opacity },
       uSunDir: { value: sunDir.current },
+      uPlanetCenter: { value: new THREE.Vector3() }, // updated each frame
+      uPlanetRadius: { value: config.radius },
+      uForwardScatter: { value: config.ring.forwardScatter ?? 0 },
     }
   }, [config])
 
@@ -144,6 +165,10 @@ export default function Planet({ config, index }: PlanetProps) {
       // Publish world position + recompute sun direction (sun is at origin).
       planetPositions[index].copy(orbitRef.current.position)
       sunDir.current.copy(orbitRef.current.position).negate().normalize()
+      // Ring shadow (surface) + planet shadow (ring) both need the live planet
+      // world centre.
+      surfMat.current?.uniforms.uRingCenter.value.copy(orbitRef.current.position)
+      ringMat.current?.uniforms.uPlanetCenter.value.copy(orbitRef.current.position)
     }
 
     if (spinRef.current) spinRef.current.rotation.y += config.spin * delta
@@ -155,9 +180,12 @@ export default function Planet({ config, index }: PlanetProps) {
 
   return (
     <group ref={orbitRef}>
-      {/* Atmosphere rim (symmetric — no need to tilt/spin). */}
-      {atmoUniforms && (
-        <mesh scale={config.radius * 1.06}>
+      {/* Atmosphere rim (symmetric — no need to tilt/spin). Explicit renderOrder
+          on every transparent shell: they share the planet's centre, so without
+          it their camera-distance sort keys tie and the draw order flips with the
+          camera angle — a flicker between the additive/normal-blended layers. */}
+      {atmoUniforms && !DEBUG.noAtmo && (
+        <mesh scale={config.radius * 1.06} renderOrder={1}>
           <sphereGeometry args={[1, 48, 48]} />
           <shaderMaterial
             ref={atmoMat}
@@ -187,8 +215,8 @@ export default function Planet({ config, index }: PlanetProps) {
           </mesh>
 
           {/* Clouds */}
-          {cloudUniforms && (
-            <mesh scale={1.02}>
+          {cloudUniforms && !DEBUG.noClouds && (
+            <mesh scale={1.02} renderOrder={2}>
               <sphereGeometry args={[config.radius, 48, 48]} />
               <shaderMaterial
                 ref={cloudMat}
@@ -204,8 +232,8 @@ export default function Planet({ config, index }: PlanetProps) {
         </group>
 
         {/* Rings (in the equatorial plane, tilted with the axis). */}
-        {ringUniforms && config.ring && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        {ringUniforms && config.ring && !DEBUG.noRings && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
             <ringGeometry
               args={[config.ring.inner * config.radius, config.ring.outer * config.radius, 128]}
             />

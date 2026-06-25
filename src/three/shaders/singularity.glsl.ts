@@ -169,7 +169,11 @@ export const makeBlackholeFragment = (steps: number) => /* glsl */ `
     // the analytic, continuous impact parameter b — rather than the closest
     // approach sampled at discrete march steps — keeps it band-free.
     float dB   = b - 2.598;
-    float ring = exp(-pow(dB / 0.055, 2.0)) + 0.22 * exp(-pow(dB / 0.2, 2.0));
+    // Square via multiplication, not pow(): dB is signed (b < 2.598 → negative),
+    // and pow() of a negative base is undefined in GLSL → NaN, which the global
+    // bloom then smears to a full-screen black flicker.
+    float dB1 = dB / 0.055, dB2 = dB / 0.2;
+    float ring = exp(-dB1 * dB1) + 0.22 * exp(-dB2 * dB2);
     vec3 ringCol = vec3(1.0, 0.93, 0.8);
     outRgb += (1.0 - outA * 0.6) * ringCol * ring * 1.4;
     outA = clamp(max(outA, ring * 0.9), 0.0, 1.0);

@@ -1,12 +1,40 @@
 import { noiseGLSL } from './noise.glsl'
 
 /**
- * Planet surface shader.
- *  - Day/night terminator from the live sun direction (soft smoothstep edge).
- *  - Procedural surface via fbm (no textures yet — swap in a `map` here later).
- *  - Latitude banding for the gas giants (uBands).
- *  - Earth-style ocean mask (uOcean) with a Blinn-Phong specular glint and a
- *    warm night-side glow on the land (uNight) to read as city lights.
+ * Saturn-like radial ring structure, t in 0..1 (inner → outer), returns 0..1.
+ * Shared by the ring shader (its own opacity/brightness) and the planet surface
+ * shader (so the ring SHADOW cast on the globe carries the same gap structure).
+ * Declared first so both fragment strings can interpolate it; assumes fbm() is in
+ * scope, so place it AFTER ${noiseGLSL} wherever it's used.
+ */
+export const ringDensityGLSL = /* glsl */ `
+  float ringDensity(float t) {
+    float dens = 0.0;
+    dens += 0.35 * smoothstep(0.02, 0.10, t) * (1.0 - smoothstep(0.22, 0.26, t)); // C ring (faint)
+    dens += 0.95 * smoothstep(0.24, 0.30, t) * (1.0 - smoothstep(0.49, 0.53, t)); // B ring (dense)
+    dens += 0.70 * smoothstep(0.60, 0.64, t) * (1.0 - smoothstep(0.94, 0.98, t)); // A ring
+    // Cassini Division is the gap between B and A (~0.53..0.60). Encke gap is thin.
+    float enk = (t - 0.885) * 130.0;
+    dens *= 1.0 - 0.85 * exp(-enk * enk);
+    dens *= 0.82 + 0.18 * sin(t * 200.0);                              // fine ringlets
+    dens *= 0.78 + 0.22 * (fbm(vec3(t * 55.0, 0.0, 0.0), 3) * 0.5 + 0.5); // icy grain
+    return clamp(dens, 0.0, 1.0);
+  }
+`
+
+/**
+ * Planet surface shader — grounded-realism lighting over a real NASA texture
+ * (falls back to procedural fbm before the map loads). Layered on top:
+ *  - Albedo: texture map, or fbm + latitude banding (uBands) for the gas giants.
+ *  - Lighting: sun as a point source; terminator WIDTH gated by atmosphere
+ *    (uTermSoft: airless → razor sharp, thick air → soft), with Lambert
+ *    form-shading for airless worlds. Night side near-black (uNightLift) + a cool
+ *    starlight-rim whisper so it reads as a sphere.
+ *  - Surface relief (uRelief): normal perturbed from the map's luminance so
+ *    craters self-shade at the terminator (airless bodies).
+ *  - Per-world extras, all knob-gated: surface haze (Venus), tight ocean glint +
+ *    polar aurora (Earth), warm night-side city lights (uNight), terminator
+ *    scatter band, and gas-giant differential band flow + Great Red Spot.
  */
 export const planetVertex = /* glsl */ `
   varying vec3 vWorldPos;
@@ -66,10 +94,29 @@ export const planetFragment = /* glsl */ `
   uniform float uOceanGlint;    // tight sun glint on textured oceans (Earth); 0 = off
   uniform vec3 uAuroraColor;    // polar night-side aurora tint
   uniform float uAuroraStrength;// 0 = off
+  uniform float uBandFlow;      // gas-giant differential band flow speed; 0 = off
+  uniform vec2 uGRSPos;         // Great Red Spot centre in texture UV
+  uniform vec2 uGRSSize;        // GRS radii in UV
+  uniform float uGRSStrength;   // GRS enhancement (0 = off)
+  uniform float uGRSSwirl;      // static vortex twist toward the centre
+  uniform float uGRSSpin;       // GRS rotation speed
+  uniform float uRingShadow;    // ring shadow cast onto this planet (0 = no ring)
+  uniform float uRingInner;     // ring inner/outer radius (world units)
+  uniform float uRingOuter;
+  uniform vec3 uRingNormal;     // ring-plane normal (planet axis, world)
+  uniform vec3 uRingCenter;     // planet world position
+  uniform float uSaturation;    // per-planet vibrance (1.0 = realistic)
 
   ${noiseGLSL}
+  ${ringDensityGLSL}
 
   float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+  // Jovian zonal jets: alternating drift rate by latitude (v in 0..1).
+  float jovianFlow(float v){
+    float lat = (v - 0.5) * 2.0;
+    return sin(lat * 9.0) * 0.6 + sin(lat * 20.0) * 0.3;
+  }
 
   void main() {
     vec3 N = normalize(vWorldNormal);
@@ -85,7 +132,38 @@ export const planetFragment = /* glsl */ `
       // V=latitude). The texture spins with the planet mesh because UVs are in
       // object space. sRGB values come through as-is in this linear shader, which
       // gives a slightly gamma-lifted look that reads well under the dark ambient.
-      surf = texture2D(uMap, vUv).rgb;
+      vec2 sampleUV = vUv;
+      float grsMask = 0.0;
+
+      // Gas-giant differential band flow: shear each latitude row over time so the
+      // belts and zones drift past each other (off when uBandFlow == 0).
+      if (uBandFlow > 0.0) {
+        float off = uTime * uBandFlow * jovianFlow(vUv.y);
+        sampleUV.x = fract(vUv.x - off);
+
+        // Great Red Spot: a localized swirling vortex. Measured in texture space
+        // (where the spot is fixed at uGRSPos), so the mask tracks it as it flows.
+        if (uGRSStrength > 0.0) {
+          vec2 rel = vec2(sampleUV.x - uGRSPos.x, sampleUV.y - uGRSPos.y);
+          rel.x -= floor(rel.x + 0.5); // wrap longitude to [-0.5, 0.5]
+          float dist = length(rel / uGRSSize);
+          grsMask = 1.0 - smoothstep(0.6, 1.0, dist);
+          float ang = uGRSSwirl * grsMask + uTime * uGRSSpin;
+          float s = sin(ang), co = cos(ang);
+          vec2 relRot = vec2(co * rel.x - s * rel.y, s * rel.x + co * rel.y);
+          vec2 swirlUV = vec2(fract(uGRSPos.x + relRot.x), uGRSPos.y + relRot.y);
+          sampleUV = mix(sampleUV, swirlUV, grsMask);
+        }
+      }
+
+      surf = texture2D(uMap, sampleUV).rgb;
+
+      // Enhance the GRS so it reads as a defined red-orange storm (saturate + warm).
+      if (grsMask > 0.0) {
+        float l = luma(surf);
+        vec3 enh = mix(vec3(l), surf, 1.7) * vec3(1.16, 0.9, 0.8);
+        surf = mix(surf, enh, grsMask * uGRSStrength);
+      }
 
       // Surface relief: perturb the normal by the map's luminance gradient so
       // craters and ridges self-shade at the terminator (4 extra taps; airless
@@ -130,7 +208,12 @@ export const planetFragment = /* glsl */ `
     float day = smoothstep(e0, e1, ndl);
 
     // Specular glint on water (procedural ocean only; texture has its own water).
-    vec3 H = normalize(L + V);
+    // Guard the half-vector: viewing the anti-sun (night) side makes L + V ≈ 0,
+    // and normalize(vec3(0)) is undefined → NaN on real GPUs. Because NaN * 0 is
+    // still NaN, that survives the ocean*day mask and the global bloom then smears
+    // it to a full-screen black flicker. Fall back to N when the sum collapses.
+    vec3 hv = L + V;
+    vec3 H = dot(hv, hv) > 1e-6 ? normalize(hv) : N;
     float spec = pow(max(dot(N, H), 0.0), 80.0) * ocean * day;
 
     // Tight sun glint on textured oceans (Earth): mask water by its blueness so
@@ -147,6 +230,23 @@ export const planetFragment = /* glsl */ `
     // craters self-shade — while thick-atmosphere worlds keep their flat fill.
     float form = mix(1.0, 0.45 + 0.55 * clamp(ndl, 0.0, 1.0), 1.0 - uTermSoft);
     vec3 dayCol = surf * uNightLift + surf * day * 0.91 * uSunColor * form;
+
+    // Ring shadow cast onto the planet (Saturn/Uranus): trace from this lit
+    // fragment toward the sun to the ring plane; darken by the ring density where
+    // it lands, so the Cassini gap reads as a bright line across the shadow band.
+    if (uRingShadow > 0.0) {
+      float denom = dot(L, uRingNormal);
+      if (abs(denom) > 1e-4) {
+        float tHit = dot(uRingCenter - vWorldPos, uRingNormal) / denom;
+        if (tHit > 0.0) {
+          float rr = length(vWorldPos + L * tHit - uRingCenter);
+          float tt = (rr - uRingInner) / (uRingOuter - uRingInner);
+          if (tt >= 0.0 && tt <= 1.0) {
+            dayCol *= 1.0 - 0.6 * ringDensity(tt) * uRingShadow * day;
+          }
+        }
+      }
+    }
 
     // Night-side starlight whisper — a faint cool rim so the dark side reads as a
     // sphere, not a hole punched in space.
@@ -173,6 +273,10 @@ export const planetFragment = /* glsl */ `
 
     vec3 color = dayCol + starCol + scatterCol + nightCity + auroraCol
                + (spec + glint) * vec3(1.0, 0.97, 0.9);
+
+    // Vibrance/saturation — a per-planet art knob (1.0 = realistic, >1 = punchier).
+    color = max(mix(vec3(luma(color)), color, uSaturation), 0.0);
+
     gl_FragColor = vec4(color, 1.0);
   }
 `
@@ -253,8 +357,10 @@ export const atmosphereFragment = /* glsl */ `
 `
 
 /**
- * Ring shader (Saturn / faint Uranus). Radial position drives concentric
- * banding + a crude Cassini-style gap. Lit softly by the sun direction.
+ * Ring shader (Saturn / faint Uranus). The radial density profile drives the
+ * structure; the rings are front-lit (reflectance ∝ how opaque they are) OR
+ * back-lit (sparse regions forward-scatter and glow, dense regions silhouette),
+ * blended by view-vs-sun phase. The planet casts a soft shadow band onto them.
  * vR is the object-space radius set in the vertex stage.
  */
 export const ringVertex = /* glsl */ `
@@ -278,26 +384,53 @@ export const ringFragment = /* glsl */ `
 
   uniform float uInner;
   uniform float uOuter;
-  uniform vec3 uColor;
+  uniform vec3 uColorInner;     // ring tint at the inner edge → outer edge (gradient)
+  uniform vec3 uColorOuter;
   uniform float uOpacity;
   uniform vec3 uSunDir;
+  uniform vec3 uPlanetCenter;   // planet world position
+  uniform float uPlanetRadius;
+  uniform float uForwardScatter; // backlit glow strength
 
   ${noiseGLSL}
+  ${ringDensityGLSL}
 
   void main() {
     float t = (vR - uInner) / (uOuter - uInner);
     if (t < 0.0 || t > 1.0) discard;
 
-    float bands = 0.5 + 0.5 * sin(t * 70.0);
-    float grain = fbm(vec3(t * 40.0, 0.0, 0.0), 3) * 0.5 + 0.5;
+    float dens = ringDensity(t);
+    float edges = smoothstep(0.0, 0.025, t) * smoothstep(1.0, 0.96, t);
+    dens *= edges;
+    if (dens < 0.002) discard;
 
-    // Soft inner/outer fade + a darker gap around the middle.
-    float edges = smoothstep(0.0, 0.05, t) * smoothstep(1.0, 0.93, t);
-    float gap = 1.0 - 0.6 * exp(-pow((t - 0.52) * 14.0, 2.0));
+    vec3 N = normalize(vWorldNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    vec3 L = normalize(uSunDir);
 
-    float a = (0.4 + 0.5 * bands) * grain * edges * gap * uOpacity;
+    // Planet shadow on the rings: the fragment is shadowed if it sits behind the
+    // planet (anti-sunward) within the planet's radius — a soft cylinder of shade.
+    vec3 rel = vWorldPos - uPlanetCenter;
+    float along = dot(rel, L);
+    float perp = length(rel - along * L);
+    float planetShadow = along < 0.0 ? smoothstep(uPlanetRadius, uPlanetRadius * 0.82, perp) : 0.0;
 
-    float lit = 0.5 + 0.5 * max(dot(normalize(vWorldNormal), normalize(uSunDir)), 0.0);
-    gl_FragColor = vec4(uColor * (0.6 + 0.4 * bands) * lit, a);
+    // Front-lit reflectance (off whichever face the sun hits) blended with a
+    // back-lit forward-scatter glow (sun behind → sparse glows, dense silhouettes).
+    float litFace = abs(dot(N, L));
+    float front = 0.4 + 0.6 * litFace;
+    float toward = max(dot(-V, L), 0.0);          // 1 = view looks toward the sun
+    float backFactor = smoothstep(0.0, 0.6, dot(-V, L));
+    float scatter = (1.0 - dens) * uForwardScatter * toward * toward;
+
+    float bright = front * (1.0 - 0.85 * backFactor) + scatter * backFactor;
+    bright *= 1.0 - 0.92 * planetShadow;
+
+    float a = (dens + scatter * backFactor * 0.6) * uOpacity * (1.0 - 0.85 * planetShadow);
+    a = clamp(a, 0.0, 1.0);
+
+    // Warm-to-bright radial colour gradient gives the rings depth + pop.
+    vec3 ringCol = mix(uColorInner, uColorOuter, t);
+    gl_FragColor = vec4(ringCol * bright, a);
   }
 `

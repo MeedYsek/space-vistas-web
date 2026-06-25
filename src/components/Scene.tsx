@@ -8,6 +8,7 @@ import Galaxy from '../three/galaxy/Galaxy'
 import Singularity from '../three/singularity/Singularity'
 import Vistas from '../three/vistas/Vistas'
 import { STARFIELD, NEBULA, DUST, GALAXY, MOBILE, POSTFX } from '../config/scene'
+import { DEBUG } from '../lib/debug'
 import type { DeviceProfile } from '../hooks/useDeviceProfile'
 
 interface SceneProps {
@@ -41,25 +42,28 @@ export default function Scene({ profile, reducedMotion, ignited }: SceneProps) {
     <>
       <CameraRig ignited={ignited} reducedMotion={reducedMotion} />
 
-      <Nebula layers={nebulaLayers} />
-      <ParallaxDust counts={dustCounts} />
-      <Starfield count={starCount} heroCount={heroCount} />
+      {!DEBUG.noNebula && <Nebula layers={nebulaLayers} />}
+      {!DEBUG.noDust && <ParallaxDust counts={dustCounts} />}
+      {!DEBUG.noStars && <Starfield count={starCount} heroCount={heroCount} />}
 
       {/* Heavy scenes: only when the camera will actually fly through them. */}
       {!reducedMotion && (
         <>
-          <SolarSystem showOrbits={!light} />
-          <Galaxy count={galaxyCount} />
+          {!DEBUG.noSolar && <SolarSystem showOrbits={!light} />}
+          {!DEBUG.noGalaxy && <Galaxy count={galaxyCount} />}
           <Singularity lowPower={light} />
           <Vistas lowPower={light} />
         </>
       )}
 
-      <PostFX
-        enableChromaticAberration={!light && !MOBILE.disableChromaticAberration}
-        enableGrain={!MOBILE.disableFilmGrain || !light}
-        bloomIntensity={light ? MOBILE.bloomIntensity : POSTFX.bloom.intensity}
-      />
+      {!DEBUG.noPost && (
+        <PostFX
+          enableChromaticAberration={!light && !MOBILE.disableChromaticAberration && !DEBUG.noChroma}
+          enableGrain={!MOBILE.disableFilmGrain || !light}
+          bloomIntensity={light ? MOBILE.bloomIntensity : POSTFX.bloom.intensity}
+          multisampling={light ? 0 : 4}
+        />
+      )}
     </>
   )
 }

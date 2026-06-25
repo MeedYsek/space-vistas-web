@@ -54,6 +54,7 @@ src/
     flight.ts               ← shared camera-flight state (scroll progress, warp, intro)
     solarStore.ts           ← which body is focused (drives the info-cards)
     useMagnetic.ts          ← magnetic-hover hook for buttons/links
+    debug.ts                ← URL-param render toggles (?nobloom, ?norings … — see below)
   hooks/
     useDeviceProfile.ts     ← mobile / WebGL / low-power detection
     useReducedMotion.ts     ← prefers-reduced-motion
@@ -75,10 +76,10 @@ src/
     Starfield.tsx           ← 26k instanced shader stars (+ ignite warp)
     Nebula.tsx              ← additive fbm cloud planes
     ParallaxDust.tsx        ← 3 parallax depth layers
-    PostFX.tsx              ← bloom / chromatic aberration / vignette / grain
+    PostFX.tsx              ← bloom (off by default) / chromatic aberration / vignette / grain + MSAA
     solar/
       SolarSystem.tsx       ← assembles sun + planets + orbit guides
-      Sun.tsx               ← plasma surface + corona + halo
+      Sun.tsx               ← granulated plasma surface (limb darkening) + tight corona + halo
       Planet.tsx            ← surface + atmosphere + clouds + rings, orbit + spin
       Orbits.tsx            ← faint elliptical orbit guides
       planetRegistry.ts     ← live planet world positions (camera follows these)
@@ -92,8 +93,8 @@ src/
       noise.glsl.ts         ← shared simplex noise + fbm
       starfield.glsl.ts     ← star vertex/fragment (+ uWarp)
       nebula.glsl.ts        ← nebula vertex/fragment
-      sun.glsl.ts           ← sun plasma + reusable additive glow + halo
-      planet.glsl.ts        ← planet surface / clouds / rings
+      sun.glsl.ts           ← sun granulation + limb darkening + reusable additive glow + halo
+      planet.glsl.ts        ← planet surface (grounded lighting, relief, glint, aurora, band flow + GRS) / atmosphere (forward-scatter) / clouds / rings
       galaxy.glsl.ts        ← galaxy particle spin (differential) + soft mote
       singularity.glsl.ts   ← photon-geodesic ray-march: lensed accretion disk + photon ring + Doppler, soft jet
       vistas.glsl.ts        ← procedural vista imagery + noise-displacement reveal wipe
@@ -124,7 +125,9 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Planet focus framing** | `FLIGHT.focusBack / focusBase / focusUp / focusSide` |
 | **Pointer-orbit while focused** | `FLIGHT.orbitAzimuth`, `FLIGHT.orbitElevation` |
 | **Planets** (size, orbit, colour, atmosphere, rings, copy) | `config/planets.ts` |
-| **Sun** (size, colours, brightness) | `SUN` in `config/planets.ts` |
+| **Planet realism** (per-planet) | `relief`, `terminatorSoftness`, `scatter`, `surfaceHaze`/`hazeColor`, `oceanGlint`, `aurora`, `bandFlow`, `redSpot` on each `PlanetConfig` |
+| **Shared planet lighting** | `PLANET_LIGHT` in `config/planets.ts` — `sunColor`, `nightAmbient`, `starlight`, `starTint` |
+| **Sun** (size, colours, brightness) | `SUN` in `config/planets.ts` — incl. `colorCore`, `granuleContrast`, `limbDarkening`, `sunspots`, `coronaTint`/`coronaPower`/`coronaIntensity`, `haloColor`/`haloIntensity` |
 | **Galaxy brightness** | `GALAXY.brightness` — per-particle colour multiplier (currently 0.28) |
 | **Galaxy** (particle count, arms, winding, gradient, size) | `GALAXY` in `config/scene.ts` |
 | **Galaxy placement / tilt** | `GALAXY.position`, `GALAXY.tilt` |
@@ -135,27 +138,35 @@ so they read like real shader files without needing an extra Vite GLSL plugin.
 | **Vistas content** (titles, kickers, captions, palettes, kind, photos) | `config/vistas.ts` — add `src` + `credit` for real images |
 | **Vistas layout** (corridor depth, spread, plate size, reveal band) | `VISTAS` in `config/scene.ts` |
 | **Vistas camera pan** | `FLIGHT.vistas` |
-| **Bloom** | `POSTFX.bloom.*` |
+| **Bloom** | `POSTFX.bloom.*` — **off by default** (`POSTFX.bloom.enabled`); set `true` to restore the glow |
+| **Anti-aliasing (MSAA)** | passed to `<PostFX multisampling>` from `Scene.tsx` (4 on desktop, 0 on the light path) |
 | **Chromatic aberration** | `POSTFX.chromaticAberration.offset` |
 | **Vignette / film grain** | `POSTFX.vignette.*`, `POSTFX.filmGrain.opacity` |
 | **Scroll pacing** | `SCROLL.lerp`, `SCROLL.wheelMultiplier`, `SCROLL.pageHeightVH` |
 | **Scroll-to-snap** (planet / singularity dwell) | `SCROLL.snapDelay` (ms idle, 0 = off), `SCROLL.snapDuration` (seconds) |
 | **Mobile overrides** | `MOBILE.*` |
+| **Debug render toggles** | URL params via `lib/debug.ts`: `?nobloom`, `?nopost`, `?norings`, `?noatmo`, `?noclouds`, `?nosolar`, `?nogalaxy`, `?nonebula`, `?nostars`, `?nodust` (combine with `&`) |
 
 Tip: to dial in performance vs. beauty, lower `STARFIELD.count`, `NEBULA.layers`
-and `POSTFX.bloom.intensity` first.
+and (if bloom is on) `POSTFX.bloom.intensity` first.
 
 ---
 
 ## Art direction baked in
 
-- Near-black `#05060A` void with indigo/violet nebula tones and cyan/magenta/amber glows.
-- **Sun-primary lighting** — planet night sides are near-black (`ambient 0.04`); the terminator and rim glow are the only other light. Corona shell is kept tight (`radius × 1.15`, sharp fresnel falloff) so the sun reads as a point source rather than a wash.
-- Stars and galaxy are kept dim so bright objects (sun, planet-lit hemispheres) read clearly; bloom only fires on genuinely bright surfaces.
+> **Direction: grounded-cinematic realism.** The solar system has been moving
+> away from the original stylized look toward physically-plausible, lightly-graded
+> realism — true-ish surface colours (no palette push on the rock), realistic
+> sun-as-point-source lighting, and **bloom off by default**. The notes below
+> reflect the current state; the background (nebula/void) still uses `PALETTE`.
+
+- Near-black `#05060A` void; the nebula and far-field glows keep the indigo/violet + cyan/magenta/amber `PALETTE`, but the **sun and planets render in their own true-ish colours** (the texture albedo is never graded).
+- **Sun-primary lighting** — planet night sides stay near-black (`PLANET_LIGHT.nightAmbient ≈ 0.04`) with only a faint cool starlight rim so they read as spheres. The **terminator width is atmosphere-gated** (`terminatorSoftness`: airless → razor-sharp with crater relief, thick air → soft scattering edge). The corona shell is kept tight (sharp fresnel falloff) so the sun reads as a point source, not a wash.
+- The Sun itself is grounded: warm-white core → orange limb, real **limb darkening**, subtle granulation, a faint tight corona.
+- **Bloom is off** (`POSTFX.bloom.enabled = false`) — real astrophotography doesn't bloom, and it kept the brightest surfaces from looking CGI. MSAA, vignette, film grain and faint chromatic aberration remain for a filmic, non-clinical read.
 - **Cinematic hero → solar transition** — the hero's wide-angle shot (camera at z = 150) approaches the Sun from the same direction via a 150 vh crossfade, a slow zoom-in rather than an angular cut. The camera reaches the tight Sun framing (~21° of rotation total) and then continues to each planet in order.
 - Slow, weighty, zero-G motion. Floaty pointer parallax. Scroll-to-snap on each planet and the singularity — the page eases to each body's dwell centre after a brief pause, so nothing important is skimmed past.
-- **Scene objects hidden outside their acts** — the galaxy (120k additive particles) and the vistas gallery plates are invisible until the camera actually flies through them. This keeps the hero and solar sections free of stray blue/cyan light. The singularity sits just beyond the galaxy's far edge (z = −720) so the two feel connected rather than isolated.
-- Film grain + vignette over the whole frame for a cinematic, non-clinical read.
+- **Scene objects hidden outside their acts** — the galaxy (120k additive particles) and the vistas gallery plates are invisible until the camera actually flies through them. The singularity sits just beyond the galaxy's far edge (z = −720) so the two feel connected rather than isolated.
 
 ---
 
@@ -215,6 +226,11 @@ To add or swap a map: drop a JPEG into `public/textures/planets/`, then add
 ---
 
 ## Verification — project complete
+
+> **Note:** this verification snapshot predates the **grounded-realism rework** of
+> the solar system (Sun + planets reworked one at a time, bloom switched off). The
+> end-to-end flow below still holds; the per-object look has since changed. See
+> "Art direction baked in" above for the current direction.
 
 **Verdict:** PASS · **Date:** 2026-06-24 · **Node:** v20.20.2 / Vite 6 /
 Playwright headless Chromium · `tsc --noEmit` and `vite build` both clean.

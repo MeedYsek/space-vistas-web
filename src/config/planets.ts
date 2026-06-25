@@ -6,9 +6,11 @@
  *  terrestrials invisible specks; instead radii and orbits are compressed for
  *  beauty while keeping the ordering and character of each world.
  *
- *  Everything the planet shaders need lives here, plus the info-card copy. To
- *  drop in real NASA/ESO textures later, add a `map`/`cloudMap` URL field and
- *  sample it in the shaders instead of the procedural noise (see README).
+ *  Everything the planet shaders need lives here, plus the info-card copy. Each
+ *  planet carries a real NASA texture (`map`); the procedural fbm is only the
+ *  fallback shown until the JPEG loads. Grounded-realism shading knobs (relief,
+ *  terminatorSoftness, scatter, surfaceHaze, oceanGlint, aurora, bandFlow,
+ *  redSpot) layer on top — see PlanetConfig and the README knob table.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -39,6 +41,12 @@ export interface RingConfig {
   color: string
   opacity: number
   tilt: number // radians
+  /** Back-lit forward-scatter glow strength (sparse regions glow when the view
+      looks sunward through the rings). 0 = off. */
+  forwardScatter?: number
+  /** Optional radial colour gradient (inner → outer edge). Default: flat `color`. */
+  colorInner?: string
+  colorOuter?: string
 }
 
 export interface PlanetConfig {
@@ -92,11 +100,17 @@ export interface PlanetConfig {
   /** Veil the surface toward `hazeColor` for cloud-shrouded worlds (Venus). 0 = off. */
   surfaceHaze?: number
   hazeColor?: string
+  /** Per-planet vibrance multiplier on the final surface colour. 1 = realistic. */
+  saturation?: number
   /** Tight sun glint on textured oceans (Earth). 0 = off. Mask is derived from
       the texture's blueness, so land/ice/cloud stay matte. */
   oceanGlint?: number
   /** Faint cool aurora near the poles on the night side. Off when omitted. */
   aurora?: { color: string; strength: number }
+  /** Gas-giant differential band flow speed (belts/zones shear over time). 0 = off. */
+  bandFlow?: number
+  /** Great Red Spot: a swirling, enhanced vortex. `pos`/`size` are in texture UV. */
+  redSpot?: { pos: [number, number]; size: [number, number]; strength: number; swirl: number; spin: number }
 }
 
 /**
@@ -240,11 +254,15 @@ export const PLANETS: PlanetConfig[] = [
     oceanLevel: 0,
     nightColor: '#000000',
     night: 0,
-    atmosphere: { color: '#ff9d6e', intensity: 0.4, power: 3.6 },
+    atmosphere: { color: '#e6a878', intensity: 0.38, power: 3.6 },
     clouds: null,
     ring: null,
     card: { stat: '6,779 km across', line: 'Rust and silence; a world that almost was.' },
     map: 'mars.jpg',
+    // Thin atmosphere: sharp-ish terminator + rocky form-shading; moderate relief
+    // for craters/Valles (dark regions are albedo, not height, so don't overdrive).
+    relief: 0.6,
+    terminatorSoftness: 0.3,
   },
   {
     key: 'jupiter',
@@ -266,10 +284,13 @@ export const PLANETS: PlanetConfig[] = [
     nightColor: '#000000',
     night: 0,
     atmosphere: { color: '#ffce9e', intensity: 0.5, power: 3.0 },
-    clouds: { opacity: 0.35, speed: 0.05 },
+    clouds: { opacity: 0.2, speed: 0.05 },
     ring: null,
     card: { stat: '139,820 km across', line: 'A storm older than every human story.' },
     map: 'jupiter.jpg',
+    // Banded storm flow: slow differential rotation + a defined, swirling GRS.
+    bandFlow: 0.004,
+    redSpot: { pos: [0.34, 0.615], size: [0.05, 0.035], strength: 0.8, swirl: 1.5, spin: 0.04 },
   },
   {
     key: 'saturn',
@@ -292,9 +313,15 @@ export const PLANETS: PlanetConfig[] = [
     night: 0,
     atmosphere: { color: '#ffe6b0', intensity: 0.35, power: 3.0 },
     clouds: null,
-    ring: { inner: 1.35, outer: 2.45, color: '#d9c8a0', opacity: 0.85, tilt: 0.47 },
+    ring: {
+      inner: 1.35, outer: 2.45, color: '#e8c878', opacity: 0.95, tilt: 0.47, forwardScatter: 1.1,
+      // Rich gold gradient (deep amber inner → bright pale-gold outer) for pop.
+      colorInner: '#c98a3c', colorOuter: '#f6e6ad',
+    },
     card: { stat: '116,460 km across', line: 'Crowned in ice and shattered moonlight.' },
     map: 'saturn.jpg',
+    // Showpiece: push colour vibrance (not strictly realistic, just gorgeous).
+    saturation: 1.55,
   },
   {
     key: 'uranus',
@@ -317,7 +344,7 @@ export const PLANETS: PlanetConfig[] = [
     night: 0,
     atmosphere: { color: '#bfeef2', intensity: 0.6, power: 3.0 },
     clouds: null,
-    ring: { inner: 1.4, outer: 1.9, color: '#9fd6dd', opacity: 0.35, tilt: 1.71 },
+    ring: { inner: 1.4, outer: 1.9, color: '#9fd6dd', opacity: 0.35, tilt: 1.71, forwardScatter: 0.6 },
     card: { stat: '50,724 km across', line: 'Tipped on its side, rolling through the dark.' },
     map: 'uranus.jpg',
   },
